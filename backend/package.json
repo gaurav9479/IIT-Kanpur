@@ -1,0 +1,12 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "this is our project for the TIC IITKANPUR",
+  "license": "ISC",
+  "author": "kratika gaurav abhisheikh mahee",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
