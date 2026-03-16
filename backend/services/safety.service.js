@@ -1,12 +1,10 @@
-import { NO_FLY_ZONES, COLLISION_THRESHOLD } from "../config/safety.config.js";
+import { NO_FLY_ZONES, COLLISION_THRESHOLD, SAFE_LANDING_ZONES } from "../config/safety.config.js";
 import Drone from "../models/Drone.model.js";
 
 class SafetyService {
-    /**
-     * Haversine formula to calculate distance between two coordinates in meters
-     */
+
     getDistance(coord1, coord2) {
-        const R = 6371e3; // Earth radius in meters
+        const R = 6371e3;
         const φ1 = (coord1.lat * Math.PI) / 180;
         const φ2 = (coord2.lat * Math.PI) / 180;
         const Δφ = ((coord2.lat - coord1.lat) * Math.PI) / 180;
@@ -20,9 +18,7 @@ class SafetyService {
         return R * c;
     }
 
-    /**
-     * Check if a location is inside any No-Fly Zone
-     */
+
     isInsideNFZ(location) {
         for (const zone of NO_FLY_ZONES) {
             const distance = this.getDistance(location, zone.center);
@@ -33,9 +29,7 @@ class SafetyService {
         return null;
     }
 
-    /**
-     * Check for potential collisions with other active drones
-     */
+
     async checkProximityAlerts(currentDroneId, location) {
         const activeDrones = await Drone.find({
             droneId: { $ne: currentDroneId },
@@ -54,6 +48,21 @@ class SafetyService {
             }
         }
         return alerts;
+    }
+
+
+    findNearestSafeLandingZone(currentLocation) {
+        let nearestZone = null;
+        let minDistance = Infinity;
+
+        for (const zone of SAFE_LANDING_ZONES) {
+            const distance = this.getDistance(currentLocation, zone);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestZone = zone;
+            }
+        }
+        return nearestZone;
     }
 }
 

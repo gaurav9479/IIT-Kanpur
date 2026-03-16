@@ -2,6 +2,7 @@ import Telemetry from "../models/Telemetry.model.js";
 import Drone from "../models/Drone.model.js";
 import { io } from "../server.js";
 import safetyService from "./safety.service.js";
+import { EMERGENCY_BATTERY_THRESHOLD } from "../config/safety.config.js";
 
 class TelemetryService {
   async recordTelemetry(telemetryData) {
@@ -18,9 +19,18 @@ class TelemetryService {
       { new: true }
     );
 
-    // Phase 10: Safety Checks
+
     const nfzViolation = safetyService.isInsideNFZ(telemetryData.location);
     const proximityAlerts = await safetyService.checkProximityAlerts(telemetryData.droneId, telemetryData.location);
+    
+    let emergencyLanding = null;
+    if (telemetryData.batteryLevel <= EMERGENCY_BATTERY_THRESHOLD) {
+        emergencyLanding = safetyService.findNearestSafeLandingZone(telemetryData.location);
+        await Drone.findOneAndUpdate(
+            { droneId: telemetryData.droneId },
+            { status: "idle" } 
+        );
+    }
 
     if (drone) {
       const socketData = {
@@ -31,7 +41,8 @@ class TelemetryService {
         speed: telemetryData.speed,
         safety: {
             nfzViolation,
-            proximityAlerts
+            proximityAlerts,
+            emergencyLanding
         }
       };
 
@@ -39,11 +50,12 @@ class TelemetryService {
       
       io.to("admin_dashboard").emit("telemetry_update", socketData);
 
-      if (nfzViolation || proximityAlerts.length > 0) {
+      if (nfzViolation || proximityAlerts.length > 0 || emergencyLanding) {
         io.to("admin_dashboard").emit("safety_alert", {
             droneId: drone.droneId,
             nfzViolation,
-            proximityAlerts
+            proximityAlerts,
+            emergencyLanding
         });
       }
     }

@@ -14,6 +14,8 @@ import orderRoutes from "./routes/order.routes.js";
 import telemetryRoutes from "./routes/telemetry.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import collisionRoutes from "./routes/collision.routes.js";
+import collisionService from "./services/collision.service.js";
 
 dotenv.config();
 
@@ -29,12 +31,19 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-connectDB();
+app.use(morgan("dev"));
 
+
+app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/drones", droneRoutes);
 app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/telemetry", telemetryRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/safety", collisionRoutes);
+
+connectDB().then(() => {
+  collisionService.startMonitoring();
+});
 
 app.get("/", (req, res) => {
   res.send("Drone Delivery API is running...");

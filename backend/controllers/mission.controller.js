@@ -43,7 +43,7 @@ const dispatchMission = asyncHandler(async (req, res) => {
 
   let batteryUsagePrediction;
   try {
-    const aiResponse = await axios.post(`${AI_MODULE_URL}/predict`, {
+    const aiResponse = await axios.post(`${AI_MODULE_URL}/predict/eta`, {
       droneId: drone.droneId,
       currentBattery: drone.batteryLevel,
       payloadWeight: weight,
