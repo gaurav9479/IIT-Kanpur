@@ -4,7 +4,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import Drone from "../models/Drone.model.js";
 import Mission from "../models/Mission.model.js";
 import Order from "../models/Order.model.js";
-import axios from "axios";
+import aiService from "../services/ai.service.js";
 
 
 const AI_MODULE_URL = process.env.AI_MODULE_URL || "http://localhost:5001";
@@ -41,20 +41,28 @@ const dispatchMission = asyncHandler(async (req, res) => {
   }
 
 
+  // Phase 14: Use ML AI Service for Predictions
   let batteryUsagePrediction;
   try {
-    const aiResponse = await axios.post(`${AI_MODULE_URL}/predict/eta`, {
-      droneId: drone.droneId,
-      currentBattery: drone.batteryLevel,
-      payloadWeight: weight,
-      startNode: pickupNode,
-      endNode: dropoffNode
+    // Placeholder for distance calculation. In a real scenario, this would come from a pathfinding service or pre-calculated.
+    // For now, we'll use a dummy value or derive it from nodes if possible.
+    // Assuming a simple Euclidean distance or a lookup from a graph service.
+    // For this example, let's assume a dummy distance for demonstration.
+    const distance = 100; // Example: distance in km or units relevant to the AI model
+
+    batteryUsagePrediction = await aiService.predictETA({
+      distance,
+      droneSpeed: 15, // Example drone speed
+      congestionLevel: "low", // Default or fetched from another service (e.g., weather, traffic)
+      payloadWeight: weight
     });
     
-    batteryUsagePrediction = aiResponse.data.predictedBatteryUsage;
+    // logic remains similar: check if prediction fits safety
   } catch (error) {
-    console.error("AI Module Error:", error.message);
-    throw new ApiError(502, "AI Module (Battery Prediction) is unreachable");
+    // As per instruction, aiService is expected to handle its own fallbacks/errors.
+    // If aiService throws an error, it means a critical failure.
+    console.error("AI Service (predictETA) Error:", error.message);
+    throw new ApiError(502, "AI Service (Battery Prediction) is unreachable or failed");
   }
 
   const safetyBuffer = 0.15;

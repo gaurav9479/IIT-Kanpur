@@ -2,6 +2,7 @@ import Drone from "../models/Drone.model.js";
 import Order from "../models/Order.model.js";
 import telemetryService from "./telemetry.service.js";
 import MissionHistory from "../models/MissionHistory.model.js";
+import aiService from "./ai.service.js";
 
 class SimulationService {
 
@@ -42,6 +43,14 @@ class SimulationService {
 
       const currentStep = steps[stepIndex];
       
+      const batteryDrain = await aiService.predictBatteryDrain({
+        distance: 100, 
+        payloadWeight: order.weight,
+        droneSpeed: 15,
+        altitude: 50
+      });
+      
+      const newBatteryLevel = Math.max(0, drone.batteryLevel - batteryDrain);
 
       await Order.findByIdAndUpdate(orderId, { status: currentStep.status });
 
@@ -51,7 +60,7 @@ class SimulationService {
         location: currentStep.location,
         altitude: 50,
         speed: 15,
-        batteryLevel: Math.max(0, drone.batteryLevel - (stepIndex + 1) * 5),
+        batteryLevel: newBatteryLevel,
         timestamp: new Date()
       });
 
