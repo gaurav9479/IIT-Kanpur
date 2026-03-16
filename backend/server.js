@@ -1,60 +1,63 @@
-import express from "express"
-import cors from "cors"
-import dotenv from "dotenv"
-import { createServer } from "http"
-import { Server } from "socket.io"
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import morgan from "morgan";
+import logger from "./utils/logger.js";
 
-import connectDB from "./config/db.js"
-import missionRouter from "./routes/mission.routes.js"
+import connectDB from "./config/db.js";
 
-dotenv.config()
 
-const app = express()
-const httpServer = createServer(app)
+import droneRoutes from "./routes/drone.routes.js";
+import orderRoutes from "./routes/order.routes.js";
+import telemetryRoutes from "./routes/telemetry.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+
+dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
-  }
-})
+  },
+});
 
-connectDB()
 
-app.use(cors())
-app.use(express.json())
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+connectDB();
 
-// Routes
-app.use("/api/v1/missions", missionRouter)
+app.use("/api/v1/drones", droneRoutes);
+app.use("/api/v1/orders", orderRoutes);
+app.use("/api/v1/telemetry", telemetryRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Drone Delivery Backend Running")
-})
+  res.send("Drone Delivery API is running...");
+});
 
-// Socket.io logic
+
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id)
+  console.log("Client connected:", socket.id);
 
-  // Join the admin_dashboard room
   socket.on("join_admin", () => {
-    socket.join("admin_dashboard")
-    console.log(`Socket ${socket.id} joined admin_dashboard`)
-  })
-
-  // Handle telemetry_ping event from the drone
-  socket.on("telemetry_ping", (data) => {
-    // data: { droneId, lat, lng, batteryLevel, velocity, etc. }
-    console.log(`Telemetry from ${data.droneId}:`, data)
-    
-    // Broadcast it to the admin_dashboard room
-    io.to("admin_dashboard").emit("telemetry_update", data)
-  })
+    socket.join("admin_dashboard");
+    console.log("Socket joined admin_dashboard");
+  });
 
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id)
-  })
-})
+    console.log("Client disconnected");
+  });
+});
 
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 5000;
 
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log(`Server running on port ${PORT}`);
+});
+
+export { io };

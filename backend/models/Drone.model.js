@@ -7,28 +7,25 @@ const DroneSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
-  model: {
-    type: String,
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ["IDLE", "EN_ROUTE", "RETURNING", "MAINTENANCE"],
-    default: "IDLE"
-  },
   batteryLevel: {
     type: Number,
     required: true,
     min: 0,
-    max: 100
+    max: 100,
+    default: 100
   },
-  maxWeightCapacity: {
+  status: {
+    type: String,
+    enum: ["idle", "delivering", "charging"],
+    default: "idle"
+  },
+  payloadCapacity: {
     type: Number,
     required: true
   },
-  currentLocationNode: {
-    type: String,
-    required: true
+  location: {
+    lat: { type: Number, default: 0 },
+    lng: { type: Number, default: 0 }
   }
 }, { timestamps: true })
 
