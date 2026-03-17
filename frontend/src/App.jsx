@@ -3,22 +3,29 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import StatsOverview from './components/StatsOverview';
+import MetricsDashboard from './components/MetricsDashboard';
 import DroneGrid from './components/DroneGrid';
 import SafetyAlerts from './components/SafetyAlerts';
 import MissionPlanner from './components/MissionPlanner';
+import EventLogPanel from './components/EventLogPanel';
+import DecisionExplanationPanel from './components/DecisionExplanationPanel';
+import OrderTracking from './components/OrderTracking';
+import LiveFleetMap from './components/LiveFleetMap';
+import MissionHistoryPage from './components/MissionHistoryPage';
 
 const socket = io('http://localhost:5001');
 
 const DashboardOverview = ({ drones, alerts }) => (
   <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
-    <StatsOverview drones={Object.values(drones)} />
+    <MetricsDashboard />
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      <div className="lg:col-span-3">
+      <div className="lg:col-span-3 space-y-8">
+        <LiveFleetMap drones={drones} />
         <DroneGrid drones={Object.values(drones)} />
       </div>
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-1 space-y-8">
         <SafetyAlerts alerts={alerts} />
+        <DecisionExplanationPanel />
       </div>
     </div>
   </main>
@@ -51,10 +58,17 @@ function App() {
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header />
-          <Routes>
-            <Route path="/" element={<DashboardOverview drones={drones} alerts={alerts} />} />
-            <Route path="/planner" element={<MissionPlanner />} />
-          </Routes>
+          <div className="flex-1 flex min-h-0 overflow-hidden relative">
+            <div className="flex-1 overflow-hidden relative">
+              <Routes>
+                <Route path="/" element={<DashboardOverview drones={drones} alerts={alerts} />} />
+                <Route path="/planner" element={<MissionPlanner />} />
+                <Route path="/tracking/:orderId?" element={<OrderTracking />} />
+                <Route path="/history" element={<MissionHistoryPage />} />
+              </Routes>
+            </div>
+            <EventLogPanel />
+          </div>
         </div>
       </div>
     </Router>

@@ -6,6 +6,7 @@ import Mission from "../models/Mission.model.js";
 import Order from "../models/Order.model.js";
 import navigationService from "../services/navigation.service.js";
 import { NO_FLY_ZONES } from "../config/safety.config.js";
+import { io } from "../server.js";
 
 const dispatchMission = asyncHandler(async (req, res) => {
   const { orderId } = req.body;
@@ -97,11 +98,50 @@ const dispatchMission = asyncHandler(async (req, res) => {
   order.assignedDrone = drone._id;
   await order.save();
 
+  io.emit("event_log", {
+    message: `A MISSION HAS BEEN DISPATCHED: ${mission.missionId} (Drone: ${drone.droneId})`,
+    type: "info"
+  });
+
+  io.emit("decision_update", {
+    drone: drone.droneId,
+    reason: `Optimal: Battery ${drone.batteryLevel}% | Payload OK`,
+    conflict: "No path intersections detected",
+    action: "Autonomous Trajectory Lock"
+  });
+
   return res.status(201).json(
     new ApiResponse(201, mission, "Mission dispatched successfully with 3D trajectory")
   );
 });
 
+export const getAllMissions = asyncHandler(async (req, res) => {
+  const missions = await Mission.find()
+    .populate("order")
+    .populate("drone")
+    .sort({ createdAt: -1 });
+
+  return res.status(200).json(
+    new ApiResponse(200, missions, "Missions fetched successfully")
+  );
+});
+
+export const getMissionById = asyncHandler(async (req, res) => {
+  const mission = await Mission.findById(req.params.id)
+    .populate("order")
+    .populate("drone");
+
+  if (!mission) {
+    throw new ApiError(404, "Mission not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, mission, "Mission fetched successfully")
+  );
+});
+
 export {
-  dispatchMission
+  dispatchMission,
+  getAllMissions,
+  getMissionById
 };
