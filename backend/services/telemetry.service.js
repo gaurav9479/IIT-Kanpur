@@ -2,6 +2,8 @@ import Telemetry from "../models/Telemetry.model.js";
 import Drone from "../models/Drone.model.js";
 import { io } from "../server.js";
 import safetyService from "./safety.service.js";
+import mapService from "./map.service.js";
+import gridOccupancyService from "./gridOccupancy.service.js";
 import { EMERGENCY_BATTERY_THRESHOLD } from "../config/safety.config.js";
 
 class TelemetryService {
@@ -19,6 +21,9 @@ class TelemetryService {
       { new: true }
     );
 
+    // Update Grid Occupancy for Conflict Resolution
+    const gridPos = mapService.getGridCoords(telemetryData.location.lat, telemetryData.location.lng);
+    gridOccupancyService.updateDroneLocation(telemetryData.droneId, gridPos.row, gridPos.col);
 
     const nfzViolation = safetyService.isInsideNFZ(telemetryData.location);
     const proximityAlerts = await safetyService.checkProximityAlerts(telemetryData.droneId, telemetryData.location);
@@ -36,6 +41,7 @@ class TelemetryService {
       const socketData = {
         droneId: drone.droneId,
         location: drone.location,
+        gridPos,
         batteryLevel: drone.batteryLevel,
         altitude: telemetryData.altitude,
         speed: telemetryData.speed,

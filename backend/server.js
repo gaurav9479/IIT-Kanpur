@@ -15,6 +15,7 @@ import telemetryRoutes from "./routes/telemetry.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import collisionRoutes from "./routes/collision.routes.js";
+import navigationRoutes from "./routes/navigation.routes.js";
 import collisionService from "./services/collision.service.js";
 
 dotenv.config();
@@ -40,6 +41,7 @@ app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/telemetry", telemetryRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/safety", collisionRoutes);
+app.use("/api/v1/navigation", navigationRoutes);
 
 connectDB().then(() => {
   collisionService.startMonitoring();

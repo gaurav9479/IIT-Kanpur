@@ -33,9 +33,17 @@ const MissionSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  totalDistance: {
+    type: Number,
+    default: 0
+  },
   trajectoryData: {
-    type: Array, // Array of 4D A* paths
+    type: Array, 
     default: []
+  },
+  constraints: {
+    type: Object,
+    default: {}
   }
 }, { timestamps: true })
 
