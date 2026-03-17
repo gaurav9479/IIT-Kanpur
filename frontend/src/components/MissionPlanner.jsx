@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Send, MapPin, Navigation, Trash2 } from 'lucide-react';
 import axios from 'axios';
+import CongestionOverlay from './CongestionOverlay';
 
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -103,6 +104,7 @@ const MissionPlanner = () => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           <MapEvents />
+          <CongestionOverlay />
           
           {origin && (
             <Marker 
