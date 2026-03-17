@@ -2,15 +2,15 @@ import { NO_FLY_ZONES } from '../config/safety.config.js';
 
 class MapService {
     constructor() {
-        // IITK Campus Boundaries (Approximate)
+        // IITK Road Network Bounds (from Drone_Map_IITK.ipynb)
         this.BOUNDS = {
-            minLat: 26.5000,
-            maxLat: 26.5200,
-            minLng: 80.2200,
-            maxLng: 80.2500
+            minLat: 26.5030,
+            maxLat: 26.5150,
+            minLng: 80.2220,
+            maxLng: 80.2360
         };
 
-        this.GRID_SIZE = 100; // 100x100 grid for higher resolution
+        this.GRID_SIZE = 100; // 100x100 grid (Scale: ~1.2m per cell)
         this.grid = Array(this.GRID_SIZE).fill().map(() => Array(this.GRID_SIZE).fill(0));
         
         this.initializeMap();

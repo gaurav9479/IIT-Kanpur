@@ -41,6 +41,14 @@ const MissionSchema = new mongoose.Schema({
     type: Array, 
     default: []
   },
+  lane: {
+    type: String,
+    default: null
+  },
+  slotIndex: {
+    type: Number,
+    default: 0
+  },
   constraints: {
     type: Object,
     default: {}

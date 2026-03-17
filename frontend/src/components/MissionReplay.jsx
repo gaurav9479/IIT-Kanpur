@@ -14,11 +14,16 @@ const MissionReplay = ({ missionData = null }) => {
   
   const timerRef = useRef(null);
 
-  // Sample data if none provided
-  const trajectory = mission?.trajectoryData || [
-    [26.5123, 80.2321], [26.5130, 80.2330], [26.5140, 80.2340],
-    [26.5150, 80.2350], [26.5160, 80.2360], [26.5170, 80.2370]
-  ];
+  // Handle both [lat, lng] and {lat, lng, z} formats
+  const trajectory = (mission?.trajectoryData || []).map(point => {
+    if (Array.isArray(point)) return point;
+    return [point.lat, point.lng];
+  });
+
+  // Fallback if empty
+  if (trajectory.length === 0) {
+    trajectory.push([26.5123, 80.2321], [26.5130, 80.2330], [26.5140, 80.2340]);
+  }
 
   useEffect(() => {
     if (isPlaying && currentIndex < trajectory.length - 1) {
@@ -172,7 +177,6 @@ const MissionReplay = ({ missionData = null }) => {
           </div>
         </div>
       </div>
-    </div>
   );
 };
 

@@ -118,7 +118,7 @@ class NavigationService {
 
             const latLonPath = path.map(p => ({
                 ...mapService.getLatLon(p[0], p[1]),
-                z: lane ? lane.altitude : 15 // Use lane altitude if available
+                z: lane ? lane.altitude : 20 // Default fallback altitude set to 20m
             }));
 
             if (lane) {

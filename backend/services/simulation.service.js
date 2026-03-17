@@ -43,8 +43,8 @@ class SimulationService {
       if (stepIndex >= steps.length) {
         clearInterval(interval);
         
-        // Release resources
-        await navigationService.releaseMission("LANE-001", 0, drone.droneId);
+        // Release resources dynamically from mission data
+        await navigationService.releaseMission(mission.lane, mission.slotIndex, drone.droneId);
         await collisionService.requestLanding(drone.droneId, order.hubId || "HUB-01");
 
         await MissionHistory.create({

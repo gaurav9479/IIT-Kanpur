@@ -180,9 +180,17 @@ class CollisionService {
     // ─────────────────────────────────────────────
     // LANDING QUEUE
     // ─────────────────────────────────────────────
-    requestLanding(droneId, hubId) {
+    requestLanding(droneId, hubId, isEmergency = false) {
         const zoneBusy = landingQueue.some((d) => d.hubId === hubId);
-        landingQueue.push({ droneId, hubId, requestedAt: Date.now() });
+        const entry = { droneId, hubId, requestedAt: Date.now(), isEmergency };
+        
+        if (isEmergency) {
+            landingQueue.unshift(entry);
+            logger.warn(`[EMERGENCY] Priority landing cleared for Drone ${droneId} at ${hubId}`);
+            return { status: "CLEARED_PRIORITY" };
+        }
+
+        landingQueue.push(entry);
 
         if (zoneBusy) {
             logger.info(`[LANDING] Drone ${droneId} in holding pattern at ${hubId}`);

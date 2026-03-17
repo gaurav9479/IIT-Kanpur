@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Rectangle, Tooltip } from 'react-leaflet';
 import { io } from 'socket.io-client';
 
-/**
- * CongestionOverlay Component
- * Renders a grid-based heatmap on the Leaflet map to show drone lane density.
- * Uses the same coordinate mapping as MapService.
- */
+
 const CongestionOverlay = () => {
   const [gridData, setGridData] = useState([]);
 

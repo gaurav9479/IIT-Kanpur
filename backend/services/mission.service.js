@@ -37,7 +37,7 @@ class MissionService {
             }
         );
 
-        const { path, distance } = navData;
+        const { path, distance, lane, slotIndex } = navData;
 
         // Request Takeoff
         await collisionService.requestTakeoff(drone.droneId, order.hubId || "HUB-01");
@@ -63,7 +63,9 @@ class MissionService {
             status: "IN_PROGRESS",
             estimatedBatteryUsage: batteryUsagePrediction,
             totalDistance: distance,
-            trajectoryData: path
+            trajectoryData: path,
+            lane,
+            slotIndex
         });
 
         drone.status = "delivering";
