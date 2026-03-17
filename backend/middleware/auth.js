@@ -22,12 +22,13 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
-const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
+const restrictTo = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      throw new ApiError(403, `You do not have permission to perform this action. Required: ${roles.join(" or ")}`);
+    }
     next();
-  } else {
-    throw new ApiError(403, "Not authorized as an admin");
-  }
+  };
 };
 
-export { protect, adminOnly };
+export { protect, restrictTo };

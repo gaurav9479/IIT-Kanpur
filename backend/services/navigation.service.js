@@ -1,3 +1,4 @@
+import axios from "axios";
 import logger from "../utils/logger.js";
 import mapService from "./map.service.js";
 import gridOccupancyService from "./gridOccupancy.service.js";
@@ -10,8 +11,25 @@ class NavigationService {
     async get3DRoute(start, end, options = {}) {
         const droneId = options.droneId;
         
+        // 1. Attempt Distributed Microservice Call (External Pathfinding Module)
         try {
-            // Internal A* Logic (Production Grade)
+            const response = await axios.post(`${NAV_URL}/path`, {
+                start,
+                end,
+                droneId,
+                obstacles: options.obstacles || []
+            }, { timeout: 2000 }); // 2-second fail-fast timeout
+
+            if (response.data && response.data.path) {
+                logger.info(`External Navigation successful for Drone ${droneId}`);
+                return response.data;
+            }
+        } catch (error) {
+            logger.warn(`External Navigation Module unreachable/timeout: ${error.message}. Switching to local UTM Navigation Engine.`);
+        }
+
+        // 2. Fallback: Internal A* Logic (Production Grade)
+        try {
             const startGrid = mapService.getGridCoords(start.lat, start.lng);
             const endGrid = mapService.getGridCoords(end.lat, end.lng);
             const grid = mapService.getGrid();
@@ -31,9 +49,9 @@ class NavigationService {
                 };
             }
 
-            throw new Error("No safe path found internal A*");
+            throw new Error("No safe path found via internal A* engine");
         } catch (error) {
-            logger.warn(`Internal Navigation Failed: ${error.message}. Falling back to direct path.`);
+            logger.error(`UTM Critical Navigation Failure: ${error.message}. Generating emergency direct vector.`);
             
             const distance = this.calculateDirectDistance(start, end);
             return {

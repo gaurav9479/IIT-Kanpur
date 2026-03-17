@@ -3,6 +3,9 @@ import Order from "../models/Order.model.js";
 import telemetryService from "./telemetry.service.js";
 import MissionHistory from "../models/MissionHistory.model.js";
 import aiService from "./ai.service.js";
+import { io } from "../server.js";
+import Mission from "../models/Mission.model.js";
+import logger from "../utils/logger.js";
 
 class SimulationService {
 
@@ -55,6 +58,43 @@ class SimulationService {
 
       const currentStep = steps[stepIndex];
       
+      // --- FAILURE SIMULATION LOGIC ---
+      const failureRoll = Math.random();
+      const isFailureLevel = process.env.SIM_FAILURE === "true"; // Control via Env var for testing
+      
+      if (isFailureLevel && failureRoll < 0.05) { // 5% chance of failure per step
+          const failureType = failureRoll < 0.015 ? "CRASH" : (failureRoll < 0.03 ? "BATTERY_FAIL" : "SIGNAL_LOSS");
+          
+          if (failureType === "CRASH") {
+              clearInterval(interval);
+              logger.error(`CRITICAL: Drone ${drone.droneId} suffered catastrophic hardware failure (CRASH)!`);
+              io.emit("event_log", { message: `CRITICAL: Drone ${drone.droneId} CRASHED mid-flight!`, type: "error" });
+              
+              await Drone.findByIdAndUpdate(droneId, { status: "maintenance", batteryLevel: 0 });
+              await Order.findByIdAndUpdate(orderId, { status: "failed" });
+              await Mission.findOneAndUpdate({ order: orderId, drone: droneId }, { status: "FAILED" });
+              
+              // Trigger Auto-Reassignment logic after 5s "System Analysis"
+              setTimeout(async () => {
+                  const missionService = (await import("./mission.service.js")).default;
+                  await missionService.reassignMission(orderId, drone.droneId);
+              }, 5000);
+              
+              return; 
+          } else if (failureType === "BATTERY_FAIL") {
+              logger.warn(`ALERT: Drone ${drone.droneId} reporting rapid battery thermal runaway!`);
+              io.emit("event_log", { message: `ALERT: Drone ${drone.droneId} Battery Critical Failure! Emergency Landing initiated.`, type: "error" });
+              // Force battery to critical, safety.service will handle landing in next recordTelemetry
+              await Drone.findByIdAndUpdate(droneId, { batteryLevel: 2 }); 
+          } else if (failureType === "SIGNAL_LOSS") {
+              logger.warn(`WARNING: Signal degradation for Drone ${drone.droneId}. Skipping telemetry update.`);
+              io.emit("event_log", { message: `WARNING: Signal Loss for ${drone.droneId}. Attempting reconnection...`, type: "warning" });
+              stepIndex++;
+              return; // Skip this telemetry update
+          }
+      }
+      // ---------------------------------
+
       const batteryDrain = await aiService.predictBatteryDrain({
         distance: (mission?.totalDistance || 100) / steps.length, 
         payloadWeight: order.weight,
