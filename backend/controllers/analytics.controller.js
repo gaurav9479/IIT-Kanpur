@@ -15,3 +15,10 @@ export const getMissionStats = asyncHandler(async (req, res) => {
     new ApiResponse(200, stats, "Mission stats fetched successfully")
   );
 });
+
+export const getHistoricalTrends = asyncHandler(async (req, res) => {
+  const trends = await analyticsService.getHistoricalTrends();
+  return res.status(200).json(
+    new ApiResponse(200, trends, "Historical mission trends fetched successfully")
+  );
+});

@@ -1,9 +1,19 @@
 import winston from "winston";
+import { AsyncLocalStorage } from "async_hooks";
+
+const logContext = new AsyncLocalStorage();
 
 const logger = winston.createLogger({
   level: "info",
   format: winston.format.combine(
     winston.format.timestamp(),
+    winston.format((info) => {
+        const context = logContext.getStore();
+        if (context && context.correlationId) {
+            info.correlationId = context.correlationId;
+        }
+        return info;
+    })(),
     winston.format.json()
   ),
   transports: [
@@ -15,9 +25,13 @@ const logger = winston.createLogger({
 if (process.env.NODE_ENV !== "production") {
   logger.add(
     new winston.transports.Console({
-      format: winston.format.simple(),
+      format: winston.format.combine(
+          winston.format.colorize(),
+          winston.format.simple()
+      ),
     })
   );
 }
 
+export { logContext };
 export default logger;

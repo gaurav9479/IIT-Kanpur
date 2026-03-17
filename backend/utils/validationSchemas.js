@@ -1,34 +1,49 @@
 import { z } from "zod";
 
 export const droneSchema = z.object({
-  droneId: z.string().min(3).max(20),
-  batteryLevel: z.number().min(0).max(100).optional(),
-  payloadCapacity: z.number().positive(),
-  location: z.object({
-    lat: z.number(),
-    lng: z.number(),
-  }).optional(),
+  body: z.object({
+    droneId: z.string().min(3).max(20),
+    type: z.string().optional(),
+    batteryLevel: z.number().min(0).max(100).optional(),
+    payloadCapacity: z.number().positive(),
+    status: z.enum(["idle", "delivering", "maintenance", "charging"]).optional(),
+    location: z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }).optional(),
+  })
 });
 
 export const orderSchema = z.object({
-  pickupLocation: z.object({
-    lat: z.number(),
-    lng: z.number(),
-  }),
-  dropLocation: z.object({
-    lat: z.number(),
-    lng: z.number(),
-  }),
-  weight: z.number().positive(),
+  body: z.object({
+    pickupLocation: z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }),
+    dropLocation: z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }),
+    weight: z.number().positive(),
+    customerName: z.string().optional()
+  })
+});
+
+export const missionDispatchSchema = z.object({
+  body: z.object({
+    orderId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid MongoDB ID")
+  })
 });
 
 export const telemetrySchema = z.object({
-  droneId: z.string(),
-  location: z.object({
-    lat: z.number(),
-    lng: z.number(),
-  }),
-  altitude: z.number(),
-  speed: z.number(),
-  batteryLevel: z.number().min(0).max(100),
+  body: z.object({
+    droneId: z.string(),
+    location: z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }),
+    altitude: z.number(),
+    speed: z.number(),
+    batteryLevel: z.number().min(0).max(100),
+  })
 });

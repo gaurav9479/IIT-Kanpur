@@ -25,6 +25,9 @@ class TelemetryService {
     const gridPos = mapService.getGridCoords(telemetryData.location.lat, telemetryData.location.lng);
     gridOccupancyService.updateDroneLocation(telemetryData.droneId, gridPos.row, gridPos.col);
 
+    // Broadcast Grid Congestion for Map Overlay
+    io.emit("grid_update", gridOccupancyService.getCongestionData());
+
     const nfzViolation = safetyService.isInsideNFZ(telemetryData.location);
     const proximityAlerts = await safetyService.checkProximityAlerts(telemetryData.droneId, telemetryData.location);
     
@@ -63,6 +66,17 @@ class TelemetryService {
             proximityAlerts,
             emergencyLanding
         });
+
+        // Log to Event Panel
+        if (nfzViolation) {
+          io.emit("event_log", { message: `CRITICAL: Drone ${drone.droneId} entered No-Fly Zone!`, type: "error" });
+        }
+        if (proximityAlerts.length > 0) {
+          io.emit("event_log", { message: `WARNING: Collision Risk for Drone ${drone.droneId}!`, type: "warning" });
+        }
+        if (emergencyLanding) {
+          io.emit("event_log", { message: `ALERT: Emergency Landing for ${drone.droneId} (Low Battery)!`, type: "error" });
+        }
       }
     }
 

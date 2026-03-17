@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import morgan from "morgan";
+import { rateLimit } from "express-rate-limit";
+import correlationIdMiddleware from "./middleware/correlationId.js";
 import logger from "./utils/logger.js";
 
 import connectDB from "./config/db.js";
@@ -16,6 +18,7 @@ import analyticsRoutes from "./routes/analytics.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import collisionRoutes from "./routes/collision.routes.js";
 import navigationRoutes from "./routes/navigation.routes.js";
+import missionRoutes from "./routes/mission.routes.js";
 import collisionService from "./services/collision.service.js";
 
 dotenv.config();
@@ -29,10 +32,24 @@ const io = new Server(httpServer, {
 });
 
 
+app.use(correlationIdMiddleware);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(morgan("dev"));
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    message: "Too many requests from this IP, please try again after 15 minutes"
+  }
+});
+
+app.use(limiter);
 
 
 app.use("/api/v1/auth", authRoutes);
@@ -42,6 +59,7 @@ app.use("/api/v1/telemetry", telemetryRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/safety", collisionRoutes);
 app.use("/api/v1/navigation", navigationRoutes);
+app.use("/api/v1/missions", missionRoutes);
 
 connectDB().then(() => {
   collisionService.startMonitoring();
