@@ -21,3 +21,11 @@ export const SAFE_LANDING_ZONES = [
 export const COLLISION_THRESHOLD = 10; 
 export const EMERGENCY_BATTERY_THRESHOLD = 5; 
 export const TELEMETRY_TIMEOUT_MS = 30000; 
+
+export const ALTITUDE_LANES = [30, 50, 70, 90]; // meters
+export const LANE_DIRECTION = { 30: "CW", 50: "CCW", 70: "CW", 90: "CCW" };
+export const LANE_CAPACITY = 3; // max drones per lane per time slot
+export const VERTICAL_BUFFER = 10; // meters — vertical conflict buffer
+export const TIME_SLOT_DURATION = 30; // seconds per slot
+export const CONGESTION_THRESHOLD = 0.7; // AI score se upar → lane avoid karo
+export const BATTERY_LOW = 15; // holding pattern trigger
