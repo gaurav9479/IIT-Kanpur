@@ -250,10 +250,6 @@ class NavigationService {
 
         return R * c;
     }
-
-    async releaseMission(laneId, slotIndex, droneId) {
-        logger.info(`LANE FREE: Drone ${droneId} released Slot ${slotIndex} in Lane ${laneId}`);
-    }
 }
 
 export default new NavigationService();

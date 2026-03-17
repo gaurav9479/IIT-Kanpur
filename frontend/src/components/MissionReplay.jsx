@@ -5,11 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { Play, Pause, FastForward, RotateCcw, Clock, Navigation, Map as MapIcon, Plane } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/**
- * MissionReplay Component
- * Allows visual playback of historical drone mission trajectories.
- * Supports variable speeds (1x, 2x, 4x) and manual timeline scrubbing.
- */
+
 const MissionReplay = ({ missionData = null }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
