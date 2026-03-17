@@ -19,7 +19,7 @@ export const SAFE_LANDING_ZONES = [
 ];
 
 export const COLLISION_THRESHOLD = 10;
-export const EMERGENCY_BATTERY_THRESHOLD = 15; // 5 → 15 fix
+export const EMERGENCY_BATTERY_THRESHOLD = 15; // 5 → 15 fix (Team requirement)
 export const TELEMETRY_TIMEOUT_MS = 30000;
 
 // ===== MEMBER 2 — Navigation & ATC Config =====

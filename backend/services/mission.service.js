@@ -8,6 +8,9 @@ import { io } from "../server.js";
 import logger from "../utils/logger.js";
 import simulationService from "./simulation.service.js";
 
+import gridOccupancyService from "./gridOccupancy.service.js";
+import collisionService from "./collision.service.js";
+
 class MissionService {
     async createMission(orderId) {
         const order = await Order.findById(orderId);
@@ -24,13 +27,20 @@ class MissionService {
         if (!drone) throw new Error("No suitable idle drone found");
 
         // Plan 3D Trajectory
+        const congestionScores = gridOccupancyService.getCongestionData();
         const navData = await navigationService.get3DRoute(
             pickupLocation,
             dropLocation,
-            { droneId: drone.droneId }
+            { 
+                droneId: drone.droneId,
+                congestionScores 
+            }
         );
 
         const { path, distance } = navData;
+
+        // Request Takeoff
+        await collisionService.requestTakeoff(drone.droneId, order.hubId || "HUB-01");
 
         // Predict Battery Usage
         const batteryUsagePrediction = await aiService.predictBatteryDrain({

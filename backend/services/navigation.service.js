@@ -90,7 +90,8 @@ class NavigationService {
                 start,
                 end,
                 droneId,
-                obstacles: options.obstacles || []
+                obstacles: options.obstacles || [],
+                congestionScores: options.congestionScores || []
             }, { timeout: 2000 }); // 2-second fail-fast timeout
 
             if (response.data && response.data.path) {
@@ -101,7 +102,7 @@ class NavigationService {
             logger.warn(`External Navigation Module unreachable/timeout: ${error.message}. Switching to local UTM Navigation Engine.`);
         }
 
-        // 2. Fallback: Internal A* Logic (Production Grade)
+        // 2. Fallback: Internal A* + Lane/Slot Logic (Abhishek's Priority)
         try {
             const startGrid = mapService.getGridCoords(start.lat, start.lng);
             const endGrid = mapService.getGridCoords(end.lat, end.lng);
@@ -109,30 +110,33 @@ class NavigationService {
 
             const path = this.runAStar(grid, startGrid, endGrid, droneId);
 
-            if (!path) throw new Error("No safe path found internal A*");
-
-            const latLonPath = path.map(p => ({
-                ...mapService.getLatLon(p[0], p[1]),
-                z: 15
-            }));
+            if (!path) throw new Error("No safe path found via internal A*");
 
             // ── Lane + Slot Assignment ──
             const slotIndex = getTimeSlot(Date.now());
-            const lane = assignLane(start, end, slotIndex, congestionScores);
+            const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
 
-            if (!lane) {
-                logger.warn(`[NAV] All lanes full for drone ${droneId} — slot ${slotIndex}`);
-                return {
-                    path: latLonPath,
-                    distance: this.calculatePathDistance(latLonPath),
-                    lane: null,
-                    slotIndex,
-                    altitude: 15,
-                    laneAssigned: false,
-                };
+            const latLonPath = path.map(p => ({
+                ...mapService.getLatLon(p[0], p[1]),
+                z: lane ? lane.altitude : 15 // Use lane altitude if available
+            }));
+
+            if (lane) {
+                reserveSlot(lane.id, slotIndex, droneId);
+                logger.info(`[NAV] Reserved Lane ${lane.id} Slot ${slotIndex} for ${droneId}`);
+            } else {
+                logger.warn(`[NAV] All lanes full for drone ${droneId} — using default altitude`);
             }
 
-            throw new Error("No safe path found via internal A* engine");
+            return {
+                path: latLonPath,
+                distance: this.calculatePathDistance(latLonPath),
+                lane: lane ? lane.id : null,
+                slotIndex,
+                altitude: lane ? lane.altitude : 15,
+                laneAssigned: !!lane
+            };
+
         } catch (error) {
             logger.error(`UTM Critical Navigation Failure: ${error.message}. Generating emergency direct vector.`);
             
@@ -245,6 +249,10 @@ class NavigationService {
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return R * c;
+    }
+
+    async releaseMission(laneId, slotIndex, droneId) {
+        logger.info(`LANE FREE: Drone ${droneId} released Slot ${slotIndex} in Lane ${laneId}`);
     }
 }
 

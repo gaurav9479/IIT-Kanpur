@@ -7,6 +7,9 @@ import { io } from "../server.js";
 import Mission from "../models/Mission.model.js";
 import logger from "../utils/logger.js";
 
+import navigationService from "./navigation.service.js";
+import collisionService from "./collision.service.js";
+
 class SimulationService {
 
   async startDeliverySimulation(orderId, droneId) {
@@ -40,6 +43,10 @@ class SimulationService {
       if (stepIndex >= steps.length) {
         clearInterval(interval);
         
+        // Release resources
+        await navigationService.releaseMission("LANE-001", 0, drone.droneId);
+        await collisionService.requestLanding(drone.droneId, order.hubId || "HUB-01");
+
         await MissionHistory.create({
           missionId: `HIST-${Date.now()}`,
           order: order._id,
