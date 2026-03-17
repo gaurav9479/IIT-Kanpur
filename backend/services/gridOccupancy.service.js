@@ -37,6 +37,15 @@ class GridOccupancyService {
         return false; // Cell is occupied by another drone
     }
 
+    getCongestionData() {
+        const data = [];
+        for (const [key, drones] of this.gridState.entries()) {
+            const [row, col] = key.split(',').map(Number);
+            data.push({ x: row, y: col, density: drones.size });
+        }
+        return data;
+    }
+
     removeDrone(droneId) {
         const pos = this.occupancyMap.get(droneId);
         if (pos) {

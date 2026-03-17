@@ -6,8 +6,10 @@ import {
   Map as MapIcon,
   ShoppingCart, 
   BarChart3, 
+  Search,
   ShieldAlert, 
   Settings, 
+  RotateCcw,
   LogOut 
 } from 'lucide-react';
 
@@ -18,6 +20,8 @@ const Sidebar = () => {
     { icon: MapIcon, label: 'Mission Planner', path: '/planner' },
     { icon: Plane, label: 'Fleet Management', path: '/fleet' },
     { icon: ShoppingCart, label: 'Active Orders', path: '/orders' },
+    { icon: Search, label: 'Order Tracking', path: '/tracking' },
+    { icon: RotateCcw, label: 'Mission History', path: '/history' },
     { icon: BarChart3, label: 'Analytics', path: '/analytics' },
     { icon: ShieldAlert, label: 'Safety Zones', path: '/safety' },
     { icon: Settings, label: 'Settings', path: '/settings' },
