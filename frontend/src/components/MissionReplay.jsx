@@ -177,6 +177,7 @@ const MissionReplay = ({ missionData = null }) => {
           </div>
         </div>
       </div>
+    </div>
   );
 };
 
