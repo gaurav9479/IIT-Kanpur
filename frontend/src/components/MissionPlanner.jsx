@@ -71,7 +71,7 @@ const MissionPlanner = () => {
   const canDeploy = source && destination && source !== destination && !isDeploying;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white border-l border-navy-900/5 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-white border-l border-navy-900/5 overflow-y-auto custom-scrollbar">
 
       {/* Header */}
       <div className="p-8 pb-4 flex items-center justify-between">
