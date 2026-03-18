@@ -1,6 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import morgan from "morgan";
@@ -21,13 +23,14 @@ import navigationRoutes from "./routes/navigation.routes.js";
 import missionRoutes from "./routes/mission.routes.js";
 import collisionService from "./services/collision.service.js";
 
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5001", "http://127.0.0.1:5001"],
+    methods: ["GET", "POST"],
+    credentials: true
   },
 });
 
@@ -83,7 +86,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

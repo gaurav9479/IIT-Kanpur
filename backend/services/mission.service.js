@@ -14,7 +14,11 @@ import collisionService from "./collision.service.js";
 class MissionService {
     async createMission(orderId) {
         const order = await Order.findById(orderId);
-        if (!order) throw new Error("Order not found");
+        if (!order) {
+            logger.error(`Mission creation failed: Order ${orderId} not found`);
+            throw new Error("Order not found");
+        }
+        logger.info(`[MissionService] Creating mission for Order: ${order._id}, Weight: ${order.weight}`);
 
         const { pickupLocation, dropLocation, weight } = order;
 
@@ -24,49 +28,74 @@ class MissionService {
             payloadCapacity: { $gte: weight }
         });
 
-        if (!drone) throw new Error("No suitable idle drone found");
+        if (!drone) {
+            logger.warn(`[MissionService] No idle drone found for weight ${weight}`);
+            throw new Error("No suitable idle drone found");
+        }
+        logger.info(`[MissionService] Selected Drone: ${drone.droneId}, Capacity: ${drone.payloadCapacity}`);
 
         // Plan 3D Trajectory
         const congestionScores = gridOccupancyService.getCongestionData();
+        logger.info(`[MissionService] Planning 3D trajectory...`);
         const navData = await navigationService.get3DRoute(
             pickupLocation,
             dropLocation,
-            { 
+            {
                 droneId: drone.droneId,
-                congestionScores 
+                congestionScores
             }
         );
 
+        if (!navData || !navData.path) {
+            logger.error(`[MissionService] Navigation failed: No path found`);
+            throw new Error("Route planning failed: No valid path found between points");
+        }
+
         const { path, distance, lane, slotIndex } = navData;
+        const validDistance = Number(distance) || 0;
+        logger.info(`[MissionService] Route planned: ${validDistance}m, Lane: ${lane}`);
 
         // Request Takeoff
         await collisionService.requestTakeoff(drone.droneId, order.hubId || "HUB-01");
 
-        // Predict Battery Usage
-        const batteryUsagePrediction = await aiService.predictBatteryDrain({
-            distance,
-            droneSpeed: 15,
-            altitude: 15,
-            payloadWeight: weight
+        // AI-Driven ETA & Battery Prediction
+        const aiPrediction = await aiService.predictETA({
+            distance: validDistance / 1000, // Convert to km for AI
+            payload: weight,
+            batteryLevel: drone.batteryLevel,
+            numDrones: (navData.lane ? (gridOccupancyService.getCongestionData().find(c => c.id === navData.lane)?.density || 1) : 0)
         });
 
-        if (drone.batteryLevel < batteryUsagePrediction * 1.15) {
-            throw new Error("Insufficient battery for this mission");
+        const batteryUsage = aiPrediction ? aiPrediction.batteryUsed : (validDistance * 0.1); 
+        const arrivalTimeArr = aiPrediction ? aiPrediction.estimatedArrival : new Date(Date.now() + 600000).toISOString();
+        const batteryAfter = aiPrediction ? aiPrediction.batteryAfter : (drone.batteryLevel - batteryUsage);
+
+        if (drone.batteryLevel < batteryUsage * 1.15) {
+            logger.warn(`[MissionService] Insufficient battery for mission. Required: ${batteryUsage}%, Available: ${drone.batteryLevel}%`);
+            throw new Error("Insufficient battery for this mission based on AI prediction");
         }
 
-        const mission = await Mission.create({
-            missionId: `MSN-${Date.now()}`,
-            order: order._id,
-            drone: drone._id,
-            pickupNode: "IITK-NODE",
-            dropoffNode: "DEST-NODE",
-            status: "IN_PROGRESS",
-            estimatedBatteryUsage: batteryUsagePrediction,
-            totalDistance: distance,
-            trajectoryData: path,
-            lane,
-            slotIndex
-        });
+        let mission;
+        try {
+            mission = await Mission.create({
+                missionId: `MSN-${Date.now()}`,
+                order: order._id,
+                drone: drone._id,
+                pickupNode: "IITK-NODE",
+                dropoffNode: "DEST-NODE",
+                status: "IN_PROGRESS",
+                estimatedBatteryUsage: isNaN(batteryUsage) ? 0 : batteryUsage,
+                estimatedArrival: arrivalTimeArr,
+                batteryAfter: isNaN(batteryAfter) ? drone.batteryLevel : batteryAfter,
+                totalDistance: validDistance,
+                trajectoryData: path,
+                lane,
+                slotIndex
+            });
+        } catch (error) {
+            logger.error(`[MissionService] Mission.create failed: ${error.message}`);
+            throw new Error(`Database Error: Failed to create mission record - ${error.message}`);
+        }
 
         drone.status = "delivering";
         await drone.save();

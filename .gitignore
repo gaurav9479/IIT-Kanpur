@@ -1,0 +1,29 @@
+# Dependency directories
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+ai-prediction/__pycache__/
+
+# Logs
+logs/
+*.log
+backend/logs/
+
+# Build
+dist/
+build/
+frontend/dist/
+
+# Environment
+.env
+backend/.env
+ai-prediction/.env
+
+# OS
+.DS_Store
+Thumbs.db

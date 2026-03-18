@@ -10,12 +10,12 @@ import {
     handleLostLink,
     handleLowBattery,
 } from "../controllers/collision.controller.js";
-import { protect, adminOnly } from "../middleware/auth.js";
+// import { protect, adminOnly } from "../middleware/auth.js";
 
 const router = Router();
 
-router.use(protect);
-router.use(adminOnly);
+// router.use(protect);
+// router.use(adminOnly);
 
 // ── EXISTING ──────────────────────────────────
 router.get("/stats", getCollisionStats);

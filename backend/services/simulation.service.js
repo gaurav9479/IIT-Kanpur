@@ -102,21 +102,32 @@ class SimulationService {
       }
       // ---------------------------------
 
-      const batteryDrain = await aiService.predictBatteryDrain({
-        distance: (mission?.totalDistance || 100) / steps.length, 
-        payloadWeight: order.weight,
-        droneSpeed: 15,
-        altitude: currentStep.altitude || 50
-      });
-      
+      const batteryDrain = (mission?.estimatedBatteryUsage || 10) / steps.length;
       const newBatteryLevel = Math.max(0, drone.batteryLevel - batteryDrain);
+
+      // FIX Task 8a: persist new battery level so next tick has correct baseline
+      drone.batteryLevel = newBatteryLevel;
+
+      // FIX Task 8b: emit critical battery alert when below 20%
+      if (newBatteryLevel < 20) {
+        io.emit("event_log", {
+          message: `ALERT: Drone ${drone.droneId} battery critical at ${newBatteryLevel.toFixed(1)}%`,
+          type: "error"
+        });
+      }
 
       await Order.findByIdAndUpdate(orderId, { status: currentStep.status });
 
+      // FIX: round lat/lng to 6 decimals for smooth map animation
+      const roundedLocation = {
+        lat: parseFloat((currentStep.location.lat).toFixed(6)),
+        lng: parseFloat((currentStep.location.lng).toFixed(6)),
+      };
+
       await telemetryService.recordTelemetry({
         droneId: drone.droneId,
-        location: currentStep.location,
-        altitude: currentStep.altitude || 50,
+        location: roundedLocation,
+        altitude: currentStep.altitude || mission?.altitude || 50,
         speed: 15,
         batteryLevel: newBatteryLevel,
         timestamp: new Date()

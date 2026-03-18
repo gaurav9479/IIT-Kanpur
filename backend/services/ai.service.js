@@ -5,56 +5,83 @@ const AI_URL = process.env.AI_MODULE_URL || "http://localhost:8000";
 
 class AIService {
     /**
-     * Calls Random Forest Classifier for congestion prediction
+     * Predicts congestion for a specific lane.
      */
-    async predictCongestion(numDrones, area, avgSpeed, timeOfDay) {
+    async predictCongestion(laneId, droneCount, weatherData = {}) {
+        const results = await this.predictCongestionBatch([{ laneId, droneCount }], weatherData);
+        return results ? results[0] : null;
+    }
+
+    /**
+     * Predicts congestion for multiple lanes in one call.
+     */
+    async predictCongestionBatch(laneDataList, weatherData = {}) {
         try {
-            const response = await axios.post(`${AI_URL}/predict/congestion`, {
-                number_of_drones: numDrones,
-                sector_area: area,
-                avg_speed: avgSpeed,
-                time_of_day: timeOfDay
-            });
-            return response.data.congestion_level; // low / medium / high
+            const payload = laneDataList.map(item => ({
+                lane_id: typeof item.laneId === 'string' ? parseInt(item.laneId.replace('L', '')) : item.laneId,
+                hour: new Date().getHours(),
+                num_drones: item.droneCount,
+                payload_kg: 2.0,
+                wind_speed: weatherData.windSpeed || 5.0,
+                distance_km: 1.5,
+                temperature: weatherData.temperature || 25.0,
+                visibility_km: weatherData.visibility || 10.0,
+                day_of_week: new Date().getDay(),
+                battery_level: 100.0,
+                drone_speed_kmh: 40.0,
+                hub_distance_km: 1.0
+            }));
+
+            const response = await axios.post(`${AI_URL}/predict/congestion/batch`, payload);
+            return response.data.predictions;
         } catch (error) {
-            logger.error(`AI Congestion Prediction Error: ${error.message}`);
-            return "low"; 
+            logger.error(`[AI-SERVICE] Batch congestion prediction failed: ${error.message}`);
+            return null;
         }
     }
 
-
-    async predictETA(data) {
+    /**
+     * Predicts ETA and battery usage for a mission.
+     */
+    async predictETA(params) {
         try {
             const response = await axios.post(`${AI_URL}/predict/eta`, {
-                distance: data.distance,
-                wind_speed: data.windSpeed || 0,
-                drone_speed: data.droneSpeed,
-                congestion_level: data.congestionLevel,
-                payload_weight: data.payloadWeight
+                distance_km: params.distance || 1.0,
+                wind_speed: params.windSpeed || 5.0,
+                payload_kg: params.payload || 2.0,
+                drone_speed_kmh: 40.0,
+                num_drones: params.numDrones || 1,
+                temperature: params.temperature || 25.0,
+                visibility_km: params.visibility || 10.0,
+                battery_level: params.batteryLevel || 100.0,
+                hour: new Date().getHours(),
+                day_of_week: new Date().getDay()
             });
-            return response.data.eta_minutes;
+            return response.data;
         } catch (error) {
-            logger.error(`AI ETA Prediction Error: ${error.message}`);
-            return (data.distance / 15) * 60; // Fallback to simple math
+            logger.error(`[AI-SERVICE] ETA prediction failed: ${error.message}`);
+            return null;
         }
     }
 
-
-    async predictBatteryDrain(data) {
+    /**
+     * Gets status for all lanes.
+     */
+    async getLanesStatus() {
         try {
-
-            const response = await axios.post(`${AI_URL}/predict/battery`, {
-                distance: data.distance,
-                payload: data.payloadWeight,
-                wind: data.windSpeed || 0,
-                altitude: data.altitude,
-                speed: data.droneSpeed
-            });
-            return response.data.predicted_drain;
+            const response = await axios.get(`${AI_URL}/lanes/status`);
+            return response.data;
         } catch (error) {
-            logger.error(`AI Battery Prediction Error: ${error.message}`);
-            return (data.distance / 1000) * 10; // Fallback: 10% per km
+            logger.error(`[AI-SERVICE] Lanes status fetch failed: ${error.message}`);
+            return null;
         }
+    }
+    /**
+     * Backward compatibility wrapper for battery prediction.
+     */
+    async predictBatteryDrain(params) {
+        const result = await this.predictETA(params);
+        return result ? result.batteryUsed : null;
     }
 }
 

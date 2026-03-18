@@ -8,11 +8,11 @@ import {
 
 import validate from "../middleware/validate.js";
 import { orderSchema } from "../utils/validationSchemas.js";
-import { protect } from "../middleware/auth.js";
+// import { protect } from "../middleware/auth.js";
 
 const router = Router();
 
-router.use(protect); // Secure all order routes
+// router.use(protect); // Secure all order routes
 
 router.route("/")
   .post(validate(orderSchema), createOrder)

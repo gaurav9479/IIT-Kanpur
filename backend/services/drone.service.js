@@ -15,7 +15,7 @@ class DroneService {
 
   async updateDrone(id, updateData) {
     return await Drone.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
   }
