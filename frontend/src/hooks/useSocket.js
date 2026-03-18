@@ -5,7 +5,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../config/mapConfig';
+import axios from 'axios';
+import { SOCKET_URL, API_URL } from '../config/mapConfig';
 
 const MAX_ALERTS    = 20;
 const MAX_EVENT_LOG = 50;
@@ -32,6 +33,23 @@ export function useSocket() {
             setConnected(true);
             socket.emit('join_admin'); // Required: join admin dashboard room
         });
+
+        // --- Fetch Initial State ---
+        const fetchInitialState = async () => {
+            try {
+                const res = await axios.get(`${API_URL}/drones`);
+                const droneMap = {};
+                if (res.data && res.data.data) {
+                    res.data.data.forEach(d => {
+                        droneMap[d.droneId] = d;
+                    });
+                    setDrones(prev => ({ ...droneMap, ...prev }));
+                }
+            } catch (err) {
+                console.error("Failed to fetch initial drones:", err);
+            }
+        };
+        fetchInitialState();
 
         socket.on('disconnect', () => {
             setConnected(false);
