@@ -3,11 +3,13 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map as MapIcon, Calendar, Clock, ChevronRight, PlayCircle, Layers, Navigation } from 'lucide-react';
 import MissionReplay from './MissionReplay';
+import { API_URL } from '../config/mapConfig';
 
 const MissionHistoryPage = () => {
   const [missions, setMissions] = useState([]);
   const [selectedMission, setSelectedMission] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('All');
 
   useEffect(() => {
     fetchMissions();
@@ -15,7 +17,7 @@ const MissionHistoryPage = () => {
 
   const fetchMissions = async () => {
     try {
-      const response = await axios.get('http://localhost:5001/api/v1/missions');
+      const response = await axios.get(`${API_URL}/missions`);
       setMissions(response.data.data);
     } catch (error) {
       console.error('Failed to fetch missions:', error);
@@ -29,8 +31,18 @@ const MissionHistoryPage = () => {
       {/* Sidebar: Mission List */}
       <div className="w-96 border-r border-navy-900/5 bg-white flex flex-col shadow-sm">
         <div className="p-8 border-b border-navy-900/5">
-          <h2 className="text-2xl font-sora font-black text-navy-900 tracking-tighter uppercase">Registry Logs</h2>
-          <p className="text-navy-600 text-[10px] font-black uppercase tracking-widest mt-1">Archived Mission Data Feeds</p>
+          <h2 className="text-2xl font-sora font-black text-navy-900 tracking-tighter uppercase mb-4">Registry Logs</h2>
+          <div className="flex bg-navy-900/5 p-1 rounded-xl">
+             {['All', 'Active', 'Completed', 'Failed'].map(f => (
+                <button 
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${filter === f ? 'bg-white shadow-sm text-navy-900' : 'text-navy-600 hover:text-navy-900'}`}
+                >
+                  {f}
+                </button>
+             ))}
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
@@ -39,8 +51,20 @@ const MissionHistoryPage = () => {
                <div className="w-8 h-8 border-4 border-navy-900/10 border-t-navy-900 rounded-full animate-spin mx-auto"></div>
                <p className="text-[10px] font-black text-navy-600 uppercase tracking-widest animate-pulse">Synchronizing Logs...</p>
             </div>
+          ) : missions.length === 0 ? (
+            <div className="py-20 text-center text-navy-600">
+               <Layers className="text-navy-900/20 mx-auto mb-4" size={32} />
+               <p className="text-[10px] font-black uppercase tracking-widest">No mission history yet</p>
+            </div>
           ) : (
-            missions.map((m) => (
+            missions.filter(m => {
+                if (filter === 'All') return true;
+                const status = (m.status || '').toUpperCase();
+                if (filter === 'Active') return ['ASSIGNED', 'DELIVERING', 'PENDING'].includes(status);
+                if (filter === 'Completed') return ['COMPLETED', 'DELIVERED'].includes(status);
+                if (filter === 'Failed') return ['FAILED'].includes(status);
+                return true;
+            }).map((m) => (
               <motion.button
                 key={m._id}
                 whileHover={{ x: 5 }}

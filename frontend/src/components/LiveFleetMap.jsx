@@ -1,18 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Tooltip, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Battery, Zap, Navigation, ShieldAlert } from 'lucide-react';
+import { Battery, Zap, Navigation } from 'lucide-react';
+import CongestionOverlay from './CongestionOverlay';
+import { MAP_CENTER, MAP_ZOOM } from '../config/mapConfig';
 
 /**
  * LiveFleetMap Component
  * Visualizes all active drones from the telemetry stream on a single map.
  * Supports path history, unique drone coloring, and smooth updates.
  */
-const LiveFleetMap = ({ drones }) => {
+const LiveFleetMap = ({ drones = {}, gridData = [] }) => {
   const [paths, setPaths] = useState({});
   const dronesList = Object.values(drones);
-  const center = [26.5123, 80.2321]; // IIT Kanpur Center
+  const center = MAP_CENTER;
 
   // Drone colors for unique visualization
   const DRONE_COLORS = [
@@ -80,9 +82,9 @@ const LiveFleetMap = ({ drones }) => {
         </div>
       </div>
 
-      <MapContainer 
-        center={center} 
-        zoom={15} 
+      <MapContainer
+        center={center}
+        zoom={MAP_ZOOM}
         className="h-full w-full z-0 font-sora"
         scrollWheelZoom={false}
       >
@@ -90,6 +92,7 @@ const LiveFleetMap = ({ drones }) => {
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; CARTO'
         />
+        <CongestionOverlay gridData={gridData} />
         
         {dronesList.map((drone, index) => (
           <React.Fragment key={drone.droneId}>
