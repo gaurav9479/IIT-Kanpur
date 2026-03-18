@@ -33,6 +33,14 @@ const MissionSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  estimatedArrival: {
+    type: String,
+    default: null
+  },
+  batteryAfter: {
+    type: Number,
+    default: null
+  },
   totalDistance: {
     type: Number,
     default: 0

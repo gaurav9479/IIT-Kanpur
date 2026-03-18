@@ -251,8 +251,8 @@ class CollisionService {
 
         await Drone.updateOne({ droneId }, { status: "emergency_landing" });
 
-        // Priority — front of landing queue
-        landingQueue.unshift({ droneId, hubId: nearestHub, requestedAt: Date.now() });
+        // Use unified requestLanding with emergency flag
+        this.requestLanding(droneId, nearestHub, true);
 
         const payload = {
             droneId,

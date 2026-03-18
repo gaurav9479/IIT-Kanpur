@@ -1,14 +1,13 @@
-```javascript
 import { Router } from "express";
 import { dispatchMission, getAllMissions, getMissionById } from "../controllers/mission.controller.js";
-import { protect, restrictTo } from "../middleware/auth.js";
-import validate, { missionDispatchSchema } from "../middleware/validate.js";
+// import { protect, restrictTo } from "../middleware/auth.js";
+import validate from "../middleware/validate.js";
+import { missionDispatchSchema } from "../utils/validationSchemas.js";
 
 const router = Router();
 
-router.get("/", protect, getAllMissions);
-router.post("/dispatch", protect, restrictTo("admin", "operator"), validate(missionDispatchSchema), dispatchMission);
-router.get("/:id", protect, getMissionById);
+router.get("/", getAllMissions);
+router.post("/dispatch", validate(missionDispatchSchema), dispatchMission);
+router.get("/:id", getMissionById);
 
 export default router;
-```

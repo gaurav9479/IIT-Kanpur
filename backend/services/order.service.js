@@ -57,7 +57,7 @@ class OrderService {
 
   async updateOrder(id, updateData) {
     return await Order.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }).populate("assignedDrone");
   }
