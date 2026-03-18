@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Zap, Map as MapIcon, ShieldAlert, Cpu, ArrowRight } from 'lucide-react';
 import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config/mapConfig';
 
 /**
  * DecisionExplanationPanel Component
@@ -17,7 +18,7 @@ const DecisionExplanationPanel = ({ initialData = null }) => {
   });
 
   useEffect(() => {
-    const socket = io('http://localhost:5001');
+    const socket = io(SOCKET_URL);
 
     socket.on('decision_update', (data) => {
       setDecision(data);

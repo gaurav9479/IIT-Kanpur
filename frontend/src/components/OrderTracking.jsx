@@ -6,6 +6,7 @@ import axios from 'axios';
 import L from 'leaflet';
 import { Search, Package, Navigation, CheckCircle2, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SOCKET_URL, API_URL } from '../config/mapConfig';
 
 const OrderTracking = () => {
   const { orderId: urlOrderId } = useParams();
@@ -26,7 +27,7 @@ const OrderTracking = () => {
 
   useEffect(() => {
     if (order?.assignedDrone?.droneId && order.status === 'delivering') {
-      const socket = io('http://localhost:5001');
+      const socket = io(SOCKET_URL);
       
       socket.on(`drone_update_${order.assignedDrone.droneId}`, (data) => {
         setDronePos(data.location);
@@ -40,7 +41,7 @@ const OrderTracking = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`http://localhost:5001/api/v1/orders/${id}`);
+      const response = await axios.get(`${API_URL}/orders/${id}`);
       setOrder(response.data.data);
       // If drone is already delivering, set initial position
       if (response.data.data.assignedDrone?.location) {
@@ -79,15 +80,22 @@ const OrderTracking = () => {
             <h2 className="text-3xl font-sora font-black text-navy-900 tracking-tighter uppercase">Order Tracker</h2>
             <p className="text-navy-600 text-[10px] font-black uppercase tracking-widest mt-1">Global Logistics Synchronization Hub</p>
           </div>
-          <form onSubmit={handleSearch} className="relative w-full md:w-96 group">
-            <input 
-              type="text" 
-              placeholder="Enter Order Registry ID..." 
-              value={searchId}
-              onChange={(e) => setSearchId(e.target.value)}
-              className="w-full bg-white border-2 border-navy-900/5 rounded-2xl px-6 py-4 pl-14 font-bold text-navy-900 focus:border-navy-900/10 outline-none transition-all shadow-premium"
-            />
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-navy-600 group-focus-within:text-navy-900 transition-colors" size={20} />
+          <form onSubmit={handleSearch} className="relative flex-1 md:w-auto flex items-center gap-4 group">
+            <div className="relative w-full md:w-96">
+                <input 
+                  type="text" 
+                  placeholder="Enter Order Registry ID..." 
+                  value={searchId}
+                  onChange={(e) => setSearchId(e.target.value)}
+                  className="w-full bg-white border-2 border-navy-900/5 rounded-2xl px-6 py-4 pl-14 font-bold text-navy-900 focus:border-navy-900/10 outline-none transition-all shadow-premium"
+                />
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-navy-600 group-focus-within:text-navy-900 transition-colors" size={20} />
+            </div>
+            {order && (
+                <button type="button" onClick={() => fetchOrder(urlOrderId || order._id)} disabled={loading} className="px-6 py-4 rounded-2xl bg-navy-900 text-white hover:bg-navy-800 disabled:opacity-50 transition-colors font-black uppercase text-[10px] tracking-widest shadow-premium">
+                   Refresh
+                </button>
+            )}
             <button type="submit" className="hidden">Search</button>
           </form>
         </div>

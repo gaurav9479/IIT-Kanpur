@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_URL } from '../config/mapConfig';
 
 const GridNavigator = () => {
   const GRID_SIZE = 10;
@@ -41,7 +42,7 @@ const GridNavigator = () => {
     setVisualizedPath([]);
 
     try {
-        const response = await fetch('http://localhost:5000/api/v1/navigation/grid-path', {
+        const response = await fetch(`${API_URL}/navigation/grid-path`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ grid, start, end })

@@ -23,31 +23,47 @@ const SafetyAlerts = ({ alerts }) => {
 
         <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
           <AnimatePresence>
-            {alerts.length > 0 ? (
-              alerts.map((alert, idx) => (
+            {alerts && alerts.length > 0 ? (
+              alerts.map((alert, idx) => {
+                const isNfz = alert.nfzViolation;
+                const isEmergency = !!alert.emergencyLanding;
+                const isProximity = alert.proximityAlerts && alert.proximityAlerts.length > 0;
+                let bgClass = 'bg-white-soft border-navy-900/10 hover:shadow-md text-navy-900';
+                let iconColor = 'text-navy-900';
+                
+                if (isNfz || isEmergency) {
+                   bgClass = 'bg-rose-50 border-rose-200 text-rose-800';
+                   iconColor = 'text-rose-600';
+                } else if (isProximity) {
+                   bgClass = 'bg-orange-50 border-orange-200 text-orange-800';
+                   iconColor = 'text-orange-600';
+                }
+
+                return (
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="p-4 rounded-2xl bg-white-soft border border-navy-900/10 space-y-3 shadow-sm hover:shadow-md transition-shadow"
+                  className={`p-4 rounded-2xl border space-y-3 shadow-sm transition-shadow ${bgClass}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        {getAlertIcon(alert.type)}
-                        <span className="text-[9px] font-black uppercase tracking-widest text-navy-900">
-                          {alert.type?.replace('_', ' ') || 'SYSTEM OVERRIDE'}
+                        {isNfz || isEmergency ? <ShieldAlert className={iconColor} size={16} /> : isProximity ? <AlertTriangle className={iconColor} size={16} /> : <Zap className={iconColor} size={16} />}
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${iconColor}`}>
+                          {alert.type?.replace('_', ' ') || (isNfz ? 'RESTRICTED AIRSPACE' : isEmergency ? 'EMERGENCY PROTOCOL' : isProximity ? 'COLLISION RISK' : 'SYSTEM OVERRIDE')}
                         </span>
                     </div>
-                    <span className="text-[9px] font-bold text-navy-600">
-                      {new Date(alert.timestamp).toLocaleTimeString()}
+                    <span className="text-[9px] font-bold opacity-70">
+                      {new Date(alert.timestamp || Date.now()).toLocaleTimeString()}
                     </span>
                   </div>
 
-                  <p className="text-xs text-navy-800 leading-relaxed font-bold">
-                    {alert.droneA && `Proximity violation between ${alert.droneA} & ${alert.droneB}. `}
-                    {alert.nfzViolation && `Restricted Airspace Violation: ${alert.nfzViolation}. `}
-                    {alert.emergencyLanding && `Emergency protocols active for ${alert.droneId}.`}
+                  <p className="text-xs leading-relaxed font-bold">
+                    {isProximity && `Collision Risk: Drone ${alert.droneId}. `}
+                    {isNfz && `Drone ${alert.droneId} entered No-Fly Zone. `}
+                    {isEmergency && `Emergency Landing: ${alert.droneId} at ${alert.emergencyLanding.lat.toFixed(4)}, ${alert.emergencyLanding.lng.toFixed(4)}.`}
+                    {!isProximity && !isNfz && !isEmergency && `Security alert for Drone ${alert.droneId}.`}
                   </p>
 
                   <div className="flex items-center gap-2 px-3 py-2 bg-navy-900 text-white rounded-lg shadow-inner">
@@ -57,11 +73,11 @@ const SafetyAlerts = ({ alerts }) => {
                     </span>
                   </div>
                 </motion.div>
-              ))
+              )})
             ) : (
-              <div className="h-full flex flex-col items-center justify-center opacity-10 text-center py-20 grayscale">
-                <ShieldAlert size={48} className="mb-4 text-navy-900" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-navy-900">No compromised vectors</p>
+              <div className="h-full flex flex-col items-center justify-center text-center py-20 grayscale-0">
+                <ShieldAlert size={48} className="mb-4 text-green-500" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-green-600">No active alerts</p>
               </div>
             )}
           </AnimatePresence>

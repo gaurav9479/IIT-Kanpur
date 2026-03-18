@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { motion, useSpring, useTransform, animate } from 'framer-motion';
-import { TrendingUp, TrendingDown, Package, Target, ShieldCheck, Zap } from 'lucide-react';
+import { motion, animate } from 'framer-motion';
+import { TrendingUp, Package, Zap, Battery, Activity } from 'lucide-react';
 
 const CountUp = ({ value, suffix = "" }) => {
   const [displayValue, setDisplayValue] = useState(0);
@@ -8,7 +8,7 @@ const CountUp = ({ value, suffix = "" }) => {
   useEffect(() => {
     const numericValue = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.]/g, '')) : value;
     const controls = animate(0, numericValue, {
-      duration: 2,
+      duration: 1,
       ease: "easeOut",
       onUpdate: (latest) => setDisplayValue(latest)
     });
@@ -22,9 +22,7 @@ const CountUp = ({ value, suffix = "" }) => {
   return <span>{formatted}{suffix}</span>;
 };
 
-const MetricCard = ({ title, value, suffix, trend, icon: Icon, delay }) => {
-  const isPositive = trend > 0;
-
+const MetricCard = ({ title, value, suffix, icon: Icon, delay, breakdown }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -32,26 +30,20 @@ const MetricCard = ({ title, value, suffix, trend, icon: Icon, delay }) => {
       transition={{ duration: 0.6, delay }}
       className="glass-card p-6 border border-navy-900/5 hover:border-navy-900/10 transition-all duration-500 group relative overflow-hidden bg-white/50 backdrop-blur-xl"
     >
-      {/* Background Accent */}
       <div className="absolute -right-4 -top-4 w-24 h-24 bg-navy-900/5 rounded-full blur-3xl group-hover:bg-navy-900/10 transition-colors duration-500"></div>
 
       <div className="flex justify-between items-start mb-4 relative z-10">
         <div className="p-3 bg-navy-900 rounded-xl shadow-lg shadow-navy-900/10 group-hover:scale-110 transition-transform duration-500">
           <Icon className="text-white" size={20} />
         </div>
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${
-          isPositive ? 'bg-green-500/10 text-green-600' : 'bg-rose-500/10 text-rose-600'
-        }`}>
-          {isPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-          {Math.abs(trend)}%
-        </div>
+        {breakdown && breakdown}
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 mt-auto">
         <p className="text-[10px] font-black text-navy-600 uppercase tracking-widest">{title}</p>
         <div className="flex items-baseline gap-1 mt-1">
           <h3 className="text-4xl font-sora font-black text-navy-900 tracking-tighter">
-            <CountUp value={value} />
+             <CountUp value={value} />
           </h3>
           <span className="text-xl font-black text-navy-900/30 tracking-widest ml-1">{suffix}</span>
         </div>
@@ -60,19 +52,81 @@ const MetricCard = ({ title, value, suffix, trend, icon: Icon, delay }) => {
   );
 };
 
-const MetricsDashboard = ({ metrics }) => {
-  const defaultMetrics = [
-    { title: "Total Deliveries", value: 1284, suffix: "PKTS", trend: 12.5, icon: Package },
-    { title: "Avg ETA Accuracy", value: 98.2, suffix: "%", trend: 2.1, icon: Target },
-    { title: "Conflicts Avoided", value: 42, suffix: "SAFE", trend: 5.4, icon: ShieldCheck },
-    { title: "Drone Utilization", value: 84.6, suffix: "%", trend: -0.8, icon: Zap },
-  ];
+const MetricsDashboard = ({ drones }) => {
+  // Compute metrics dynamically from the real-time drones object
+  const droneList = drones ? Object.values(drones) : [];
+  const totalDrones = droneList.length;
+  
+  const activeDrones = droneList.filter(d => d.status === "delivering").length;
+  const idleDrones = droneList.filter(d => d.status === "idle").length;
+  const lowBatteryDrones = droneList.filter(d => typeof d.batteryLevel === 'number' && d.batteryLevel < 20).length;
+  
+  const avgBattery = totalDrones > 0
+    ? (droneList.reduce((sum, d) => sum + (d.batteryLevel || 100), 0) / totalDrones).toFixed(1)
+    : "0.0";
 
-  const displayMetrics = metrics || defaultMetrics;
+  // Simple loading state if no drones
+  if (!drones || totalDrones === 0) {
+    return (
+      <div className="w-full flex justify-center py-6">
+         <span className="text-xs font-bold text-navy-600 animate-pulse tracking-widest uppercase">Initializing Fleet Metrics...</span>
+      </div>
+    );
+  }
+
+  const liveMetrics = [
+    { 
+      title: "Active Deliveries", 
+      value: activeDrones, 
+      suffix: " PKTS", 
+      icon: Package,
+      breakdown: (
+        <div className="flex bg-green-500/10 px-3 py-1 rounded-full text-[10px] items-center gap-1 font-black uppercase text-green-600">
+          <TrendingUp size={10} /> {activeDrones > 0 ? "LIVE" : "IDLE"}
+        </div>
+      )
+    },
+    { 
+      title: "Total Fleet", 
+      value: totalDrones, 
+      suffix: " DRNZ", 
+      icon: Activity,
+      breakdown: (
+        <div className="flex flex-col items-end gap-1 font-bold text-[9px] uppercase tracking-widest text-navy-600 text-right">
+          <span>Delivering: {activeDrones}</span>
+          <span>Idle: {idleDrones}</span>
+        </div>
+      )
+    },
+    { 
+      title: "Avg Battery", 
+      value: avgBattery, 
+      suffix: "%", 
+      icon: Zap,
+      breakdown: (
+         <div className="flex bg-sky-500/10 px-3 py-1 rounded-full text-[10px] items-center gap-1 font-black uppercase text-sky-600">
+          CHARGE
+        </div>
+      )
+    },
+    { 
+      title: "Low Battery", 
+      value: lowBatteryDrones, 
+      suffix: " WARN", 
+      icon: Battery,
+      breakdown: (
+         lowBatteryDrones > 0 ? (
+            <div className="flex bg-rose-500/10 px-3 py-1 rounded-full text-[10px] items-center gap-1 font-black uppercase text-rose-600">
+              CRITICAL
+            </div>
+         ) : null
+      )
+    },
+  ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-      {displayMetrics.map((m, i) => (
+      {liveMetrics.map((m, i) => (
         <MetricCard key={m.title} {...m} delay={i * 0.1} />
       ))}
     </div>

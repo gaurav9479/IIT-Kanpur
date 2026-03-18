@@ -1,48 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Info, AlertTriangle, XCircle, Clock } from 'lucide-react';
-import { io } from 'socket.io-client';
 
 /**
  * EventLogPanel Component
- * Real-time system event logging with Socket.io integration.
- * Features auto-scrolling, color-coded event types, and smooth fade-in animations.
+ * Receives eventLog from useSocket hook in App.jsx.
+ * No separate socket connection — avoids duplicate event listeners.
  */
-const EventLogPanel = () => {
-  const [logs, setLogs] = useState([]);
+const EventLogPanel = ({ eventLog = [] }) => {
+  // Map the eventLog prop to local display format
+  const logs = eventLog.map((entry, i) => ({
+    id: entry.timestamp + i,
+    timestamp: entry.timestamp
+      ? new Date(entry.timestamp).toLocaleTimeString([], { hour12: false })
+      : '--:--:--',
+    message: entry.message,
+    type: entry.type || 'info',
+  }));
   const scrollRef = useRef(null);
 
-  useEffect(() => {
-    // Connect to the UTM Backend Socket
-    const socket = io('http://localhost:5001');
-
-    socket.on('event_log', (newLog) => {
-      setLogs((prev) => {
-        const logEntry = {
-          id: Date.now() + Math.random(),
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          message: typeof newLog === 'string' ? newLog : newLog.message,
-          type: newLog.type || 'info', // info | warning | error
-        };
-        
-        // Append new log at the end and keep only last 100
-        const updatedLogs = [...prev, logEntry].slice(-100);
-        return updatedLogs;
-      });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  // Auto-scroll to bottom on new logs
+  // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [logs]);
 
