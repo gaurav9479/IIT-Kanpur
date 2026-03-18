@@ -103,6 +103,32 @@ async def congestion_endpoint(req: CongestionInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/predict/congestion/batch")
+async def congestion_batch_endpoint(req_list: list[CongestionInput]):
+    COUNTER["congestion"] += len(req_list)
+    results = []
+    try:
+        for req in req_list:
+            res = predict_congestion(
+                lane_id=req.lane_id, hour=req.hour,
+                num_drones=req.num_drones, payload_kg=req.payload_kg,
+                wind_speed=req.wind_speed, distance_km=req.distance_km,
+                temperature=req.temperature, visibility_km=req.visibility_km,
+                day_of_week=req.day_of_week, battery_level=req.battery_level,
+                drone_speed_kmh=req.drone_speed_kmh,
+                hub_distance_km=req.hub_distance_km,
+            )
+            results.append({
+                "lane_id": req.lane_id,
+                "congestionLevel": res["congestion_level"],
+                "is_congested": res["is_congested"],
+                "confidence": res["confidence"]
+            })
+        return {"timestamp": datetime.now().isoformat(), "predictions": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/predict/eta")
 async def eta_endpoint(req: ETAInput):
     COUNTER["eta"] += 1
