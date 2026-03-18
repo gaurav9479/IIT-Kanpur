@@ -16,6 +16,7 @@ import ActiveOrders from './components/ActiveOrders';
 import AnalyticsPage from './components/AnalyticsPage';
 import SafetyZones from './components/SafetyZones';
 import SettingsPage from './components/SettingsPage';
+import AddFleetPage from './components/AddFleetPage';
 import { useSocket } from './hooks/useSocket';
 
 const DashboardOverview = ({ drones, alerts, gridData, connected }) => (
@@ -73,6 +74,7 @@ function App() {
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/safety" element={<SafetyZones />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/add-fleet" element={<AddFleetPage />} />
               </Routes>
             </div>
             {/* EventLogPanel receives the log from the shared hook */}

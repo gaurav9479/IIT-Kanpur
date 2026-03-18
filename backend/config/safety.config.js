@@ -1,15 +1,23 @@
 // ===== COLLISION & SAFETY (existing) =====
 export const NO_FLY_ZONES = [
     {
-        name: "Restricted Lab Alpha",
-        center: { lat: 26.5123, lng: 80.2321 },
-        radius: 50,
+        name: "NFZ-1 (Academic Core)",
+        positions: [
+            { lat: 26.5120, lng: 80.2330 },
+            { lat: 26.5120, lng: 80.2340 },
+            { lat: 26.5130, lng: 80.2340 },
+            { lat: 26.5130, lng: 80.2330 },
+        ],
     },
     {
-        name: "Residential Area Zone 1",
-        center: { lat: 26.5150, lng: 80.2350 },
-        radius: 100,
-    }
+        name: "NFZ-2 (Research Zone)",
+        positions: [
+            { lat: 26.5100, lng: 80.2290 },
+            { lat: 26.5100, lng: 80.2300 },
+            { lat: 26.5110, lng: 80.2300 },
+            { lat: 26.5110, lng: 80.2290 },
+        ],
+    },
 ];
 
 export const SAFE_LANDING_ZONES = [

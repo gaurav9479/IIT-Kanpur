@@ -10,7 +10,8 @@ import {
   ShieldAlert, 
   Settings, 
   RotateCcw,
-  LogOut 
+  LogOut,
+  PlusCircle
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -24,6 +25,7 @@ const Sidebar = () => {
     { icon: RotateCcw, label: 'Mission History', path: '/history' },
     { icon: BarChart3, label: 'Analytics', path: '/analytics' },
     { icon: ShieldAlert, label: 'Safety Zones', path: '/safety' },
+    { icon: PlusCircle, label: 'Add Fleet Asset', path: '/add-fleet' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 

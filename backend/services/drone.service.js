@@ -19,6 +19,10 @@ class DroneService {
       runValidators: true,
     });
   }
+
+  async deleteDrone(id) {
+    return await Drone.findByIdAndDelete(id);
+  }
 }
 
 export default new DroneService();

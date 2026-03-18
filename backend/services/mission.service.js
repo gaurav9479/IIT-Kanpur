@@ -10,6 +10,7 @@ import simulationService from "./simulation.service.js";
 
 import gridOccupancyService from "./gridOccupancy.service.js";
 import collisionService from "./collision.service.js";
+import ApiError from "../utils/ApiError.js";
 
 class MissionService {
     async createMission(orderId) {
@@ -30,25 +31,33 @@ class MissionService {
 
         if (!drone) {
             logger.warn(`[MissionService] No idle drone found for weight ${weight}`);
-            throw new Error("No suitable idle drone found");
+            throw new ApiError(404, `No suitable idle drone found for payload: ${weight}kg`);
         }
         logger.info(`[MissionService] Selected Drone: ${drone.droneId}, Capacity: ${drone.payloadCapacity}`);
 
         // Plan 3D Trajectory
         const congestionScores = gridOccupancyService.getCongestionData();
         logger.info(`[MissionService] Planning 3D trajectory...`);
-        const navData = await navigationService.get3DRoute(
-            pickupLocation,
-            dropLocation,
-            {
-                droneId: drone.droneId,
-                congestionScores
-            }
-        );
+        let navData;
+        try {
+            navData = await navigationService.get3DRoute(
+                pickupLocation,
+                dropLocation,
+                {
+                    droneId: drone.droneId,
+                    congestionScores
+                }
+            );
 
-        if (!navData || !navData.path) {
-            logger.error(`[MissionService] Navigation failed: No path found`);
-            throw new Error("Route planning failed: No valid path found between points");
+            if (!navData || !navData.path) {
+                logger.error(`[MissionService] Navigation failed: No path found`);
+                throw new Error("Route planning failed: No valid path found between points");
+            }
+        } catch (error) {
+            if (error.message === "NO_GRAPH_PATH") {
+                throw new Error("NO_GRAPH_PATH");
+            }
+            throw error;
         }
 
         const { path, distance, lane, slotIndex } = navData;
@@ -66,7 +75,7 @@ class MissionService {
             numDrones: (navData.lane ? (gridOccupancyService.getCongestionData().find(c => c.id === navData.lane)?.density || 1) : 0)
         });
 
-        const batteryUsage = aiPrediction ? aiPrediction.batteryUsed : (validDistance * 0.1); 
+        const batteryUsage = aiPrediction ? aiPrediction.batteryUsed : (validDistance / 1000 * 5); 
         const arrivalTimeArr = aiPrediction ? aiPrediction.estimatedArrival : new Date(Date.now() + 600000).toISOString();
         const batteryAfter = aiPrediction ? aiPrediction.batteryAfter : (drone.batteryLevel - batteryUsage);
 

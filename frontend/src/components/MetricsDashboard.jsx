@@ -59,6 +59,7 @@ const MetricsDashboard = ({ drones }) => {
   
   const activeDrones = droneList.filter(d => d.status === "delivering").length;
   const idleDrones = droneList.filter(d => d.status === "idle").length;
+  const groundedDrones = droneList.filter(d => d.status === "grounded").length;
   const lowBatteryDrones = droneList.filter(d => typeof d.batteryLevel === 'number' && d.batteryLevel < 20).length;
   
   const avgBattery = totalDrones > 0
@@ -95,6 +96,7 @@ const MetricsDashboard = ({ drones }) => {
         <div className="flex flex-col items-end gap-1 font-bold text-[9px] uppercase tracking-widest text-navy-600 text-right">
           <span>Delivering: {activeDrones}</span>
           <span>Idle: {idleDrones}</span>
+          <span className={groundedDrones > 0 ? "text-rose-600" : ""}>Grounded: {groundedDrones}</span>
         </div>
       )
     },

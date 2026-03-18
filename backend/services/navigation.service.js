@@ -3,11 +3,14 @@ import logger from "../utils/logger.js";
 import mapService from "./map.service.js";
 import gridOccupancyService from "./gridOccupancy.service.js";
 import distanceCalculator from "../utils/distanceCalculator.js";
+import safetyService from "./safety.service.js";
 import {
     ALTITUDE_LANES,
     TIME_SLOT_DURATION_S,
     MAX_DRONES_PER_SLOT,
+    NO_FLY_ZONES
 } from "../config/safety.config.js";
+import * as campusGraph from "../config/campusGraph.config.js";
 
 const NAV_URL = process.env.NAV_MODULE_URL || "http://localhost:8001";
 
@@ -84,6 +87,100 @@ function assignLane(start, end, slotIndex, congestionScores = {}) {
 // ─────────────────────────────────────────────
 class NavigationService {
 
+    findNearestNode(location) {
+        const { CAMPUS_NODES } = campusGraph;
+        let nearest = null;
+        let minDist = Infinity;
+        
+        for (const node of CAMPUS_NODES) {
+            const dist = Math.sqrt(
+                Math.pow(node.lat - location.lat, 2) +
+                Math.pow(node.lng - location.lng, 2)
+            );
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = node;
+            }
+        }
+        return nearest;
+    }
+
+    /**
+     * Checks if the line segment from p1 to p2 intersects with any NO_FLY_ZONE
+     */
+    isEdgeInsideNFZ(p1, p2) {
+        for (const zone of NO_FLY_ZONES) {
+            const poly = zone.positions;
+            for (let i = 0; i < poly.length; i++) {
+                const a = poly[i];
+                const b = poly[(i + 1) % poly.length];
+                if (this.doSegmentsIntersect(p1, p2, a, b)) {
+                    return zone.name;
+                }
+            }
+            // Also check if either point is INSIDE (redundant but safe)
+            if (safetyService.isInsideNFZ(p1) || safetyService.isInsideNFZ(p2)) {
+                return zone.name;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Helper to check if segment (p1,p2) intersects (p3,p4)
+     */
+    doSegmentsIntersect(p1, p2, p3, p4) {
+        const ccw = (A, B, C) => (C.lat - A.lat) * (B.lng - A.lng) > (B.lat - A.lat) * (C.lng - A.lng);
+        return ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+    }
+
+    findGraphPath(fromNodeId, toNodeId) {
+        const { ADJACENCY, CAMPUS_NODES } = campusGraph;
+        
+        if (!ADJACENCY[fromNodeId] || !ADJACENCY[toNodeId]) {
+            return null; // node not in graph
+        }
+        
+        const visited = new Set();
+        const queue = [[fromNodeId, [fromNodeId]]];
+        
+        while (queue.length > 0) {
+            const [current, path] = queue.shift();
+            
+            if (current === toNodeId) {
+                return path.map(nodeId => {
+                    const node = CAMPUS_NODES.find(n => n.id === nodeId);
+                    return { 
+                        lat: node.lat, 
+                        lng: node.lng, 
+                        z: 50,
+                        nodeId,
+                        nodeName: node.name
+                    };
+                });
+            }
+            
+            if (visited.has(current)) continue;
+            visited.add(current);
+            
+            const neighbors = ADJACENCY[current] || [];
+            for (const neighbor of neighbors) {
+                if (!visited.has(neighbor)) {
+                    const currentNode = CAMPUS_NODES.find(n => n.id === current);
+                    const neighborNode = CAMPUS_NODES.find(n => n.id === neighbor);
+
+                    // NFZ Check: Skip if the edge between nodes crosses an NFZ
+                    if (this.isEdgeInsideNFZ(currentNode, neighborNode)) {
+                        continue; 
+                    }
+                    queue.push([neighbor, [...path, neighbor]]);
+                }
+            }
+        }
+        
+        return null;
+    }
+
     async get3DRoute(start, end, options = {}) {
         const droneId = options.droneId;
 
@@ -105,57 +202,95 @@ class NavigationService {
             logger.warn(`External Navigation Module unreachable/timeout: ${error.message}. Switching to local UTM Navigation Engine.`);
         }
 
-        // 2. Fallback: Internal A* + Lane/Slot Logic
+        // 2. Fallback Block - Graph Priority
         try {
-            const startGrid = mapService.getGridCoords(start.lat, start.lng);
-            const endGrid = mapService.getGridCoords(end.lat, end.lng);
-            const grid = mapService.getGrid();
+            const fromNode = this.findNearestNode(start);
+            const toNode = this.findNearestNode(end);
+            
+            if (!fromNode || !toNode) throw new Error("CANNOT_LOCATE_NEAREST_NODES");
 
-            const path = this.runAStar(grid, startGrid, endGrid, droneId);
+            const graphPathNodes = this.findGraphPath(fromNode.id, toNode.id);
+            
+            if (!graphPathNodes) {
+                throw new Error("NO_GRAPH_PATH");
+            }
 
-            if (!path) throw new Error("No safe path found via internal A*");
+            // Stitching Logic: [Start] -> [Graph] -> [End]
+            // Check NFZ for entry segment: Start -> fromNode
+            const entryNFZ = this.isEdgeInsideNFZ(start, fromNode);
+            if (entryNFZ) throw new Error(`START_SEGMENT_BLOCKED_BY_${entryNFZ}`);
 
-            // ── Lane + Slot Assignment ──
+            // Check NFZ for exit segment: toNode -> End
+            const exitNFZ = this.isEdgeInsideNFZ(toNode, end);
+            if (exitNFZ) throw new Error(`END_SEGMENT_BLOCKED_BY_${exitNFZ}`);
+
             const slotIndex = getTimeSlot(Date.now());
             const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
+            const altitude = lane ? lane.altitude : 50;
 
-            const latLonPath = path.map(p => ({
-                ...mapService.getLatLon(p[0], p[1]),
-                z: lane ? lane.altitude : 50
-            }));
+            // Build final path: Start -> middle nodes -> End
+            const finalPath = [
+                { lat: start.lat, lng: start.lng, z: altitude },
+                ...graphPathNodes.map(p => ({ ...p, z: altitude })),
+                { lat: end.lat, lng: end.lng, z: altitude }
+            ];
 
             if (lane) {
                 reserveSlot(lane.id, slotIndex, droneId);
                 logger.info(`[NAV] Reserved Lane ${lane.id} Slot ${slotIndex} for ${droneId}`);
-            } else {
-                logger.warn(`[NAV] All lanes full for drone ${droneId} — using default altitude`);
             }
 
             return {
-                path: latLonPath,
-                distance: distanceCalculator.calculatePathDistance(latLonPath),
+                path: finalPath,
+                distance: distanceCalculator.calculatePathDistance(finalPath),
                 lane: lane ? lane.id : null,
                 slotIndex,
-                altitude: lane ? lane.altitude : 50,
-                laneAssigned: !!lane
+                altitude,
+                laneAssigned: !!lane,
+                source: "graph-stitched"
             };
-
         } catch (error) {
-            // 3. Emergency fallback: straight line at 50m (Task 9)
-            logger.warn(`AI down - using fallback routing: ${error.message}`);
+            if (error.message === "NO_GRAPH_PATH") {
+                logger.error(`No flight corridor exists between selected nodes.`);
+                throw error; // Propagate specific validation error
+            }
+            // 3. Emergency fallback: attempt a 3-point path to avoid NFZs
+            logger.warn(`Fallback routing triggered: ${error.message}`);
 
-            const midLat = (start.lat + end.lat) / 2;
-            const midLng = (start.lng + end.lng) / 2;
-            const distance = distanceCalculator.calculate2DDistance(start, end);
+            // Check if direct line is blocked
+            const blockingZone = this.isEdgeInsideNFZ(start, end);
+            
+            if (blockingZone) {
+                logger.warn(`Direct path blocked by ${blockingZone}. Attempting reroute...`);
+                // Simple detour: pick a waypoint offset from the midpoint
+                const midLat = (start.lat + end.lat) / 2 + 0.002; // Offset north
+                const midLng = (start.lng + end.lng) / 2 + 0.002; // Offset east
+                const mid = { lat: midLat, lng: midLng };
 
+                if (!this.isEdgeInsideNFZ(start, mid) && !this.isEdgeInsideNFZ(mid, end)) {
+                    const path = [
+                        { lat: start.lat, lng: start.lng, z: 50 },
+                        { ...mid, z: 50 },
+                        { lat: end.lat, lng: end.lng, z: 50 },
+                    ];
+                    return {
+                        path,
+                        distance: distanceCalculator.calculatePathDistance(path),
+                        lane: 5,
+                        laneAssigned: false,
+                        altitude: 50,
+                    };
+                }
+            }
+
+            // Absolute last resort (straight line)
             return {
                 path: [
                     { lat: start.lat, lng: start.lng, z: 50 },
-                    { lat: midLat,    lng: midLng,    z: 50 },
                     { lat: end.lat,   lng: end.lng,   z: 50 },
                 ],
-                distance,
-                lane: 5,          // Default mid-range lane
+                distance: distanceCalculator.calculate2DDistance(start, end),
+                lane: 5,
                 laneAssigned: false,
                 altitude: 50,
             };

@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Polygon, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Polygon, Tooltip, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Send, MapPin, Trash2, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
@@ -31,23 +31,55 @@ L.Icon.Default.mergeOptions({
 const CAMPUS_NAMES = Object.keys(CAMPUS_NODES);
 
 const MissionPlanner = () => {
-  const [source,      setSource]      = useState('');
-  const [destination, setDestination] = useState('');
+  const [source,      setSource]      = useState(null); // { name, lat, lng }
+  const [destination, setDestination] = useState(null); // { name, lat, lng }
+  const [snapToHub,   setSnapToHub]   = useState(false);
   const [weight,      setWeight]      = useState(1.0);
   const [isDeploying, setIsDeploying] = useState(false);
   const [feedback,    setFeedback]    = useState(null);
 
-  const sourceCoords = source      ? CAMPUS_NODES[source]      : null;
-  const destCoords   = destination ? CAMPUS_NODES[destination] : null;
+  // Helper to find nearest campus node for snapping
+  const findNearestNode = (lat, lng) => {
+    let nearestName = null;
+    let minDist = Infinity;
+    
+    CAMPUS_NAMES.forEach(name => {
+      const node = CAMPUS_NODES[name];
+      const d = Math.sqrt(Math.pow(node.lat - lat, 2) + Math.pow(node.lng - lng, 2));
+      if (d < minDist) {
+        minDist = d;
+        nearestName = name;
+      }
+    });
+    return { name: nearestName, ...CAMPUS_NODES[nearestName] };
+  };
+
+  const MapClickHandler = () => {
+    useMapEvents({
+      click(e) {
+        const { lat, lng } = e.latlng;
+        const point = snapToHub 
+          ? findNearestNode(lat, lng)
+          : { name: `Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`, lat, lng };
+        
+        if (!source) {
+          setSource(point);
+        } else if (!destination && (point.lat !== source.lat || point.lng !== source.lng)) {
+          setDestination(point);
+        }
+      },
+    });
+    return null;
+  };
 
   const handleDeploy = async () => {
-    if (!source || !destination || source === destination) return;
+    if (!source || !destination) return;
     setIsDeploying(true);
     setFeedback(null);
     try {
       const res = await axios.post(`${API_URL}/missions/dispatch`, {
-        pickupLocation: { lat: sourceCoords.lat, lng: sourceCoords.lng },
-        dropLocation:   { lat: destCoords.lat,   lng: destCoords.lng   },
+        pickupLocation: { lat: source.lat, lng: source.lng },
+        dropLocation:   { lat: destination.lat, lng: destination.lng },
         weight:          parseFloat(weight),
       });
       const { missionId, droneId } = res.data?.data || res.data;
@@ -55,8 +87,8 @@ const MissionPlanner = () => {
         type: 'success',
         msg: `✅ Mission Dispatched! ID: ${missionId || 'OK'} | Drone: ${droneId || 'Assigned'}`,
       });
-      setSource('');
-      setDestination('');
+      setSource(null);
+      setDestination(null);
       setWeight(1.0);
     } catch (error) {
       setFeedback({
@@ -68,7 +100,7 @@ const MissionPlanner = () => {
     }
   };
 
-  const canDeploy = source && destination && source !== destination && !isDeploying;
+  const canDeploy = source && destination && !isDeploying;
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white border-l border-navy-900/5 overflow-y-auto custom-scrollbar">
@@ -84,8 +116,17 @@ const MissionPlanner = () => {
           </p>
         </div>
         <div className="flex gap-4">
+          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-navy-50/50 border border-navy-900/5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-navy-600">Snap to Hub</label>
+            <button
+              onClick={() => setSnapToHub(!snapToHub)}
+              className={`w-10 h-5 rounded-full transition-all relative ${snapToHub ? 'bg-navy-900' : 'bg-gray-300'}`}
+            >
+              <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${snapToHub ? 'left-6' : 'left-1'}`} />
+            </button>
+          </div>
           <button
-            onClick={() => { setSource(''); setDestination(''); setFeedback(null); }}
+            onClick={() => { setSource(null); setDestination(null); setFeedback(null); }}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white-soft hover:bg-navy-900 hover:text-white text-navy-900 font-black uppercase text-[10px] tracking-widest transition-all border border-navy-900/10 shadow-sm"
           >
             <Trash2 size={16} /> Clear
@@ -125,8 +166,13 @@ const MissionPlanner = () => {
             <MapPin size={10} className="inline mr-1" /> Departure Hub
           </label>
           <select
-            value={source}
-            onChange={e => { setSource(e.target.value); setDestination(''); }}
+            value={source?.name || ""}
+            onChange={e => { 
+                const name = e.target.value;
+                if (!name) setSource(null);
+                else setSource({ name, ...CAMPUS_NODES[name] });
+                setDestination(null); 
+            }}
             className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900"
           >
             <option value="">Select Source...</option>
@@ -142,13 +188,17 @@ const MissionPlanner = () => {
             <MapPin size={10} className="inline mr-1" /> Arrival Target
           </label>
           <select
-            value={destination}
-            onChange={e => setDestination(e.target.value)}
+            value={destination?.name || ""}
+            onChange={e => {
+                const name = e.target.value;
+                if (!name) setDestination(null);
+                else setDestination({ name, ...CAMPUS_NODES[name] });
+            }}
             disabled={!source}
             className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900 disabled:opacity-50"
           >
             <option value="">Select Destination...</option>
-            {CAMPUS_NAMES.filter(n => n !== source).map(name => (
+            {CAMPUS_NAMES.filter(n => n !== source?.name).map(name => (
               <option key={name} value={name}>{name}</option>
             ))}
           </select>
@@ -184,6 +234,9 @@ const MissionPlanner = () => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
 
+          {/* ── Map Click Interaction ───────────────────────────── */}
+          <MapClickHandler />
+
           {/* ── Congestion Heatmap ──────────────────────────────── */}
           <CongestionOverlay />
 
@@ -217,36 +270,40 @@ const MissionPlanner = () => {
             </Polygon>
           ))}
 
-          {/* ── Campus Node Markers ────────────────────────────── */}
-          {CAMPUS_NAMES.map(name => {
-            const { lat, lng } = CAMPUS_NODES[name];
-            const isSource = name === source;
-            const isDest   = name === destination;
-            if (!isSource && !isDest) return null;
-            return (
+          {/* ── Custom Markers ────────────────────────────── */}
+          {source && (
               <Marker
-                key={name}
-                position={[lat, lng]}
+                position={[source.lat, source.lng]}
                 icon={new L.Icon({
-                  iconUrl: isSource
-                    ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png'
-                    : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png',
                   iconSize: [25, 41], iconAnchor: [12, 41],
                 })}
               >
                 <Tooltip permanent direction="top" offset={[0, -40]}>
-                  <span className="text-[10px] font-black uppercase">{name}</span>
+                  <span className="text-[10px] font-black uppercase text-navy-900">{source.name}</span>
                 </Tooltip>
               </Marker>
-            );
-          })}
+          )}
+          {destination && (
+              <Marker
+                position={[destination.lat, destination.lng]}
+                icon={new L.Icon({
+                  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                  iconSize: [25, 41], iconAnchor: [12, 41],
+                })}
+              >
+                <Tooltip permanent direction="top" offset={[0, -40]}>
+                  <span className="text-[10px] font-black uppercase text-blue-900">{destination.name}</span>
+                </Tooltip>
+              </Marker>
+          )}
 
           {/* ── Flight Path Preview ───────────────────────────── */}
-          {sourceCoords && destCoords && (
+          {source && destination && (
             <Polyline
               positions={[
-                [sourceCoords.lat, sourceCoords.lng],
-                [destCoords.lat,   destCoords.lng],
+                [source.lat, source.lng],
+                [destination.lat,   destination.lng],
               ]}
               pathOptions={{ color: '#0d1b2a', weight: 3, dashArray: '8,8', opacity: 0.8 }}
             />
@@ -255,15 +312,15 @@ const MissionPlanner = () => {
 
         {/* Coordinate readout */}
         <div className="absolute bottom-4 left-4 z-10 space-y-2">
-          {[{ label: 'Departure', name: source, coords: sourceCoords },
-            { label: 'Arrival',   name: destination, coords: destCoords }].map(({ label, name, coords }) => (
+          {[{ label: 'Departure', item: source },
+            { label: 'Arrival',   item: destination }].map(({ label, item }) => (
             <div key={label} className="glass-card px-4 py-2 flex items-center gap-3 bg-white border border-navy-900/20 shadow-xl">
-              <div className={`w-2.5 h-2.5 rounded-full ${coords ? 'bg-navy-900' : 'bg-gray-300'}`} />
+              <div className={`w-2.5 h-2.5 rounded-full ${item ? 'bg-navy-900' : 'bg-gray-300'}`} />
               <div>
                 <p className="text-[8px] font-black text-navy-600 uppercase tracking-widest">{label}</p>
                 <p className="text-[10px] font-black text-navy-900">
-                  {name || 'Not selected'}
-                  {coords ? ` (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})` : ''}
+                  {item?.name || 'Not selected'}
+                  {item ? ` (${item.lat.toFixed(4)}, ${item.lng.toFixed(4)})` : ''}
                 </p>
               </div>
             </div>

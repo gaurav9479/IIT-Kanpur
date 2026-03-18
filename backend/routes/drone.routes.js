@@ -4,6 +4,7 @@ import {
   getAllDrones,
   getDroneById,
   updateDrone,
+  deleteDrone
 } from "../controllers/drone.controller.js";
 
 import validate from "../middleware/validate.js";
@@ -20,6 +21,9 @@ router.route("/")
 
 router.route("/:id")
   .get(getDroneById)
-  .patch(updateDrone);
+  .patch(updateDrone)
+  .delete(deleteDrone);
+
+router.patch("/:id/status", updateDrone);
 
 export default router;

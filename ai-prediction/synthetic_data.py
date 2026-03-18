@@ -99,32 +99,33 @@ def generate_data(n_samples=5000):
     is_weekday = (day_of_week < 5).astype(int)
 
     # ── TARGET: is_congested ────────────────────────────────────
-    # Weighted formula — all weights sum to exactly 1.0
-    # Each weight justified by physical reasoning
+    # Improved formula with non-linear interactions and random events
+    
+    # Base congestion from drones
+    base_congestion = (num_drones / (MAX_DRONES_PER_LANE + 3))
+    
+    # Non-linear interaction: wind has more impact when lane is already busy
+    wind_impact = (wind_speed / 50) * (1 + base_congestion * 0.5)
+    
+    # Random "Event" factor (e.g., temporary lane restriction or technical glitch)
+    random_events = np.random.choice([0, 0.15, 0.3], size=n_samples, p=[0.9, 0.07, 0.03])
+    
     congestion_score = (
-        # 35% — direct cause of congestion
-        (num_drones / (MAX_DRONES_PER_LANE + 3)) * 0.35 +
-        # 20% — campus activity pattern
-        (is_peak_hour)                            * 0.20 +
-        # 15% — wind slows drones, lane stays busy
-        (wind_speed / 50)                         * 0.15 +
-        # 10% — heavy payload slows drone
-        (payload_kg / 5.0)                        * 0.10 +
-        # 8%  — low visibility forces slower flight
-        (1 - visibility_km / 10)                  * 0.08 +
-        # 7%  — low battery = slower drone
-        (1 - battery_level / 100)                 * 0.07 +
-        # 5%  — weekday vs weekend activity
-        (is_weekday)                              * 0.05
+        base_congestion * 0.30 +
+        wind_impact * 0.20 +
+        (is_peak_hour) * 0.20 +
+        (payload_kg / 5.0) * 0.10 +
+        (1 - visibility_km / 10) * 0.10 +
+        (is_weekday) * 0.05 +
+        random_events
     )
-
+    
     # Gaussian noise — real world is never perfectly predictable
-    noise = np.random.normal(0, 0.04, n_samples)
+    noise = np.random.normal(0, 0.05, n_samples)
     congestion_score = np.clip(congestion_score + noise, 0, 1)
 
     # Binary target — 1 if congested, 0 if free
-    is_congested = (
-        congestion_score >= CONGESTION_THRESHOLD).astype(int)
+    is_congested = (congestion_score >= CONGESTION_THRESHOLD).astype(int)
 
     # ── BUILD FINAL DATAFRAME ───────────────────────────────────
     df = pd.DataFrame({

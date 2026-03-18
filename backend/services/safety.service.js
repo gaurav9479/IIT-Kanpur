@@ -21,12 +21,31 @@ class SafetyService {
 
     isInsideNFZ(location) {
         for (const zone of NO_FLY_ZONES) {
-            const distance = this.getDistance(location, zone.center);
-            if (distance <= zone.radius) {
+            if (this.isPointInPolygon(location, zone.positions)) {
                 return zone.name;
             }
         }
         return null;
+    }
+
+    /**
+     * Ray-Casting algorithm for Point-in-Polygon check
+     */
+    isPointInPolygon(point, polygon) {
+        let isInside = false;
+        const x = point.lat;
+        const y = point.lng;
+
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].lat, yi = polygon[i].lng;
+            const xj = polygon[j].lat, yj = polygon[j].lng;
+
+            const intersect = ((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) isInside = !isInside;
+        }
+
+        return isInside;
     }
 
 

@@ -43,9 +43,9 @@ class CongestionInput(BaseModel):
     lane_id:         int   = Field(..., ge=1, le=10)
     hour:            int   = Field(..., ge=0, le=23)
     num_drones:      int   = Field(..., ge=0, le=5)
-    payload_kg:      float = Field(..., ge=0.0, le=5.0)
+    payload_kg:      float = Field(..., ge=0.0, le=25.0)
     wind_speed:      float = Field(..., ge=0.0, le=35.0)
-    distance_km:     float = Field(..., ge=0.1, le=3.0)
+    distance_km:     float = Field(..., ge=0.1, le=10.0)
     temperature:     float = Field(..., ge=8.0, le=45.0)
     visibility_km:   float = Field(..., ge=0.5, le=10.0)
     day_of_week:     int   = Field(..., ge=0, le=6)
@@ -55,9 +55,9 @@ class CongestionInput(BaseModel):
 
 
 class ETAInput(BaseModel):
-    distance_km:     float = Field(..., ge=0.1, le=3.0)
+    distance_km:     float = Field(..., ge=0.1, le=10.0)
     wind_speed:      float = Field(..., ge=0.0, le=35.0)
-    payload_kg:      float = Field(..., ge=0.0, le=5.0)
+    payload_kg:      float = Field(..., ge=0.0, le=25.0)
     drone_speed_kmh: float = Field(40.0)
     num_drones:      int   = Field(0)
     temperature:     float = Field(25.0)

@@ -16,12 +16,17 @@ const DroneSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["idle", "delivering", "charging"],
+    enum: ["idle", "delivering", "charging", "grounded"],
     default: "idle"
   },
   payloadCapacity: {
     type: Number,
     required: true
+  },
+  vehicleType: {
+    type: String,
+    enum: ["drone", "plane"],
+    default: "drone"
   },
   location: {
     lat: { type: Number, default: 0 },

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plane, 
@@ -13,8 +14,11 @@ import {
   Settings
 } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
+import axios from 'axios';
+import { API_URL } from '../config/mapConfig';
 
 const FleetManagement = () => {
+  const navigate = useNavigate();
   const { drones, connected } = useSocket();
   const droneList = useMemo(() => Object.values(drones), [drones]);
 
@@ -23,9 +27,22 @@ const FleetManagement = () => {
       total: droneList.length,
       active: droneList.filter(d => d.status === 'delivering').length,
       idle: droneList.filter(d => d.status === 'idle').length,
+      grounded: droneList.filter(d => d.status === 'grounded').length,
       lowBattery: droneList.filter(d => d.batteryLevel < 25).length
     };
   }, [droneList]);
+
+  const handleRecharge = async (id) => {
+    try {
+      await axios.patch(`${API_URL}/drones/${id}/status`, {
+        status: 'idle',
+        batteryLevel: 100
+      });
+      // The socket update will handle state refresh
+    } catch (err) {
+      console.error("Recharge failed:", err);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
@@ -50,7 +67,10 @@ const FleetManagement = () => {
               className="pl-9 pr-4 py-2 bg-navy-900/5 rounded-xl text-[10px] font-black tracking-widest uppercase focus:outline-none focus:ring-2 ring-navy-900/10 w-48 transition-all"
             />
           </div>
-          <button className="bg-navy-900 text-white px-6 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase shadow-lg shadow-navy-900/20 active:scale-95 transition-all">
+          <button 
+            onClick={() => navigate('/add-fleet')}
+            className="bg-navy-900 text-white px-6 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase shadow-lg shadow-navy-900/20 active:scale-95 transition-all"
+          >
             Add Asset
           </button>
         </div>
@@ -62,7 +82,7 @@ const FleetManagement = () => {
           { label: 'Total Fleet', value: stats.total, color: 'navy' },
           { label: 'In-Flight', value: stats.active, color: 'sky' },
           { label: 'Ready/Idle', value: stats.idle, color: 'emerald' },
-          { label: 'Low Battery', value: stats.lowBattery, color: 'rose' }
+          { label: 'Grounded', value: stats.grounded, color: 'rose' }
         ].map((stat, i) => (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -92,6 +112,7 @@ const FleetManagement = () => {
               {/* Status Indicator Bar */}
               <div className={`absolute top-0 left-0 right-0 h-1 ${
                 drone.status === 'delivering' ? 'bg-sky-500' :
+                drone.status === 'grounded' ? 'bg-red-600' :
                 drone.status === 'maintenance' ? 'bg-amber-500' : 'bg-emerald-500'
               }`} />
 
@@ -110,9 +131,11 @@ const FleetManagement = () => {
                   </div>
                   <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
                     drone.status === 'delivering' ? 'bg-sky-500/10 text-sky-600' :
-                    drone.status === 'idle' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+                    drone.status === 'idle' ? 'bg-emerald-500/10 text-emerald-600' : 
+                    drone.status === 'grounded' ? 'bg-red-600/10 text-red-600' :
+                    'bg-amber-500/10 text-amber-600'
                   }`}>
-                    {drone.status === 'delivering' ? 'ONLINE' : drone.status === 'idle' ? 'STANDBY' : drone.status}
+                    {drone.status === 'delivering' ? 'ONLINE' : drone.status === 'idle' ? 'STANDBY' : drone.status === 'grounded' ? 'GROUNDED' : drone.status}
                   </div>
                 </div>
 
@@ -152,13 +175,25 @@ const FleetManagement = () => {
 
                   {/* Telemetry/Action */}
                   <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="flex items-center gap-2">
-                       <Navigation size={12} className="text-navy-400" />
-                       <span className="text-[9px] font-black text-navy-900 uppercase">TELEMETRY LINK: ACTIVE</span>
-                    </div>
-                    <button className="p-2 hover:bg-navy-900 hover:text-white rounded-lg transition-colors text-navy-600">
-                      <Settings size={16} />
-                    </button>
+                    {drone.status === 'grounded' ? (
+                      <button 
+                        onClick={() => handleRecharge(drone._id)}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-[10px] font-black tracking-widest uppercase shadow-lg shadow-red-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Battery size={14} fill="currentColor" />
+                        Recharge & Restore
+                      </button>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Navigation size={12} className="text-navy-400" />
+                          <span className="text-[9px] font-black text-navy-900 uppercase">TELEMETRY LINK: ACTIVE</span>
+                        </div>
+                        <button className="p-2 hover:bg-navy-900 hover:text-white rounded-lg transition-colors text-navy-600">
+                          <Settings size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

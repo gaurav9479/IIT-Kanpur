@@ -64,6 +64,23 @@ app.use("/api/v1/safety", collisionRoutes);
 app.use("/api/v1/navigation", navigationRoutes);
 app.use("/api/v1/missions", missionRoutes);
 
+// Global Error Handler
+import ApiError from "./utils/ApiError.js";
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || (err instanceof ApiError ? err.statusCode : 500);
+  const message = err.message || "Internal Server Error";
+  
+  logger.error(`[Error] ${statusCode} - ${message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
+  
+  res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message,
+    errors: err.errors || [],
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+  });
+});
+
 connectDB().then(() => {
   collisionService.startMonitoring();
 });

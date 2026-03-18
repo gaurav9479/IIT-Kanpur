@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Tooltip, Polygon } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Battery, Zap, Navigation } from 'lucide-react';
+import { Battery, Zap, Navigation, MapPin } from 'lucide-react';
 import CongestionOverlay from './CongestionOverlay';
-import { MAP_CENTER, MAP_ZOOM } from '../config/mapConfig';
+import { MAP_CENTER, MAP_ZOOM, CAMPUS_EDGES, CAMPUS_NODES, NO_FLY_ZONES } from '../config/mapConfig';
 
 /**
  * LiveFleetMap Component
@@ -40,8 +40,8 @@ const LiveFleetMap = ({ drones = {}, gridData = [] }) => {
   }, [drones]);
 
   const createDroneIcon = (droneId, index, status) => {
-    const color = DRONE_COLORS[index % DRONE_COLORS.length];
-    const isOffline = status === 'idle' || !status;
+    const color = status === 'grounded' ? '#8B0000' : DRONE_COLORS[index % DRONE_COLORS.length];
+    const isOffline = status === 'idle' || !status || status === 'grounded';
 
     return L.divIcon({
       className: 'custom-drone-icon',
@@ -60,7 +60,7 @@ const LiveFleetMap = ({ drones = {}, gridData = [] }) => {
 
           <!-- Label -->
           <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-navy-900 border border-white/20 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-tighter">
-            ${droneId}
+            ${droneId} ${status === 'grounded' ? '(GROUNDED)' : ''}
           </div>
         </div>
       `,
@@ -93,7 +93,56 @@ const LiveFleetMap = ({ drones = {}, gridData = [] }) => {
           attribution='&copy; CARTO'
         />
         <CongestionOverlay gridData={gridData} />
+
+        {/* --- IITK Infrastructure Layer --- */}
         
+        {/* Road Network (Campus Edges) */}
+        {CAMPUS_EDGES.map((edge, idx) => (
+          <Polyline 
+            key={`edge-${idx}`}
+            positions={edge}
+            pathOptions={{
+              color: '#94a3b8', // subtle slate-400
+              weight: 1,
+              dashArray: '10, 10',
+              opacity: 0.4
+            }}
+          />
+        ))}
+
+        {/* No-Fly Zones */}
+        {NO_FLY_ZONES.map((zone, idx) => (
+          <Polygon
+            key={`nfz-${idx}`}
+            positions={zone.positions}
+            pathOptions={{
+              color: idx === 0 ? '#ef4444' : '#3b82f6', // Red for Academic, Blue for Research
+              fillColor: idx === 0 ? '#ef4444' : '#3b82f6',
+              fillOpacity: 0.1,
+              weight: 2,
+              dashArray: '5, 10'
+            }}
+          >
+            <Tooltip sticky>
+              <span className="text-[10px] font-black uppercase tracking-widest">{zone.name}</span>
+            </Tooltip>
+          </Polygon>
+        ))}
+
+        {/* Named Landmarks */}
+        {Object.entries(CAMPUS_NODES).map(([name, coords]) => (
+          <Marker 
+            key={`node-${name}`}
+            position={[coords.lat, coords.lng]}
+            icon={L.divIcon({
+              className: 'landmark-label',
+              html: `<div class="text-[8px] font-bold text-navy-400 uppercase whitespace-nowrap bg-white/50 px-1 rounded">${name}</div>`,
+              iconAnchor: [0, 0]
+            })}
+          />
+        ))}
+
+        {/* --- Active Fleet Layer --- */}
         {dronesList.map((drone, index) => (
           <React.Fragment key={drone.droneId}>
             {/* Trajectory Path */}
@@ -102,9 +151,8 @@ const LiveFleetMap = ({ drones = {}, gridData = [] }) => {
                 positions={paths[drone.droneId]}
                 pathOptions={{
                   color: DRONE_COLORS[index % DRONE_COLORS.length],
-                  weight: 2,
-                  opacity: 0.6,
-                  dashArray: '5, 5'
+                  weight: 4,
+                  opacity: 1,
                 }}
               />
             )}
@@ -118,7 +166,9 @@ const LiveFleetMap = ({ drones = {}, gridData = [] }) => {
                 <div className="p-2 min-w-[120px] bg-white rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black text-navy-900 uppercase tracking-widest">{drone.droneId}</span>
-                    <span className="text-[9px] font-bold text-navy-600 px-1.5 bg-navy-900/5 rounded uppercase tracking-tighter">{drone.status === 'delivering' ? 'ONLINE' : drone.status === 'idle' ? 'STANDBY' : drone.status || 'Active'}</span>
+                    <span className={`text-[9px] font-bold px-1.5 rounded uppercase tracking-tighter ${drone.status==='grounded' ? 'bg-red-900/10 text-red-600' : 'bg-navy-900/5 text-navy-600'}`}>
+                       {drone.status === 'delivering' ? 'ONLINE' : drone.status === 'idle' ? 'STANDBY' : drone.status === 'grounded' ? 'GROUNDED' : drone.status || 'Active'}
+                    </span>
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
