@@ -18,7 +18,7 @@ class TelemetryService {
         location: telemetryData.location,
         batteryLevel: telemetryData.batteryLevel,
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     // Update Grid Occupancy for Conflict Resolution

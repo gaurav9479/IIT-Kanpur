@@ -8,18 +8,18 @@ import {
 
 import validate from "../middleware/validate.js";
 import { droneSchema } from "../utils/validationSchemas.js";
-import { protect, restrictTo } from "../middleware/auth.js";
+// import { protect, restrictTo } from "../middleware/auth.js";
 
 const router = Router();
 
-router.use(protect); // Secure all drone routes
+// router.use(protect); // Secure all drone routes
 
 router.route("/")
-  .post(restrictTo("admin"), validate(droneSchema), createDrone)
+  .post(validate(droneSchema), createDrone)
   .get(getAllDrones);
 
 router.route("/:id")
   .get(getDroneById)
-  .patch(restrictTo("admin"), updateDrone);
+  .patch(updateDrone);
 
 export default router;

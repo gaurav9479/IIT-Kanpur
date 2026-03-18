@@ -31,7 +31,18 @@ export const orderSchema = z.object({
 
 export const missionDispatchSchema = z.object({
   body: z.object({
-    orderId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid MongoDB ID")
+    orderId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid MongoDB ID").optional(),
+    pickupLocation: z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }).optional(),
+    dropLocation: z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }).optional(),
+    weight: z.number().positive().optional()
+  }).refine(data => data.orderId || (data.pickupLocation && data.dropLocation && data.weight), {
+    message: "Either orderId or (pickupLocation, dropLocation, weight) must be provided"
   })
 });
 

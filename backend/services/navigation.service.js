@@ -2,11 +2,14 @@ import axios from "axios";
 import logger from "../utils/logger.js";
 import mapService from "./map.service.js";
 import gridOccupancyService from "./gridOccupancy.service.js";
+import distanceCalculator from "../utils/distanceCalculator.js";
 import {
     ALTITUDE_LANES,
     TIME_SLOT_DURATION_S,
     MAX_DRONES_PER_SLOT,
 } from "../config/safety.config.js";
+
+const NAV_URL = process.env.NAV_MODULE_URL || "http://localhost:8001";
 
 // ─────────────────────────────────────────────
 // TIME-SLOT OCCUPANCY TABLE
@@ -83,7 +86,7 @@ class NavigationService {
 
     async get3DRoute(start, end, options = {}) {
         const droneId = options.droneId;
-        
+
         // 1. Attempt Distributed Microservice Call (External Pathfinding Module)
         try {
             const response = await axios.post(`${NAV_URL}/path`, {
@@ -102,7 +105,7 @@ class NavigationService {
             logger.warn(`External Navigation Module unreachable/timeout: ${error.message}. Switching to local UTM Navigation Engine.`);
         }
 
-        // 2. Fallback: Internal A* + Lane/Slot Logic (Abhishek's Priority)
+        // 2. Fallback: Internal A* + Lane/Slot Logic
         try {
             const startGrid = mapService.getGridCoords(start.lat, start.lng);
             const endGrid = mapService.getGridCoords(end.lat, end.lng);
@@ -118,7 +121,7 @@ class NavigationService {
 
             const latLonPath = path.map(p => ({
                 ...mapService.getLatLon(p[0], p[1]),
-                z: lane ? lane.altitude : 20 // Default fallback altitude set to 20m
+                z: lane ? lane.altitude : 50
             }));
 
             if (lane) {
@@ -130,25 +133,31 @@ class NavigationService {
 
             return {
                 path: latLonPath,
-                distance: this.calculatePathDistance(latLonPath),
+                distance: distanceCalculator.calculatePathDistance(latLonPath),
                 lane: lane ? lane.id : null,
                 slotIndex,
-                altitude: lane ? lane.altitude : 15,
+                altitude: lane ? lane.altitude : 50,
                 laneAssigned: !!lane
             };
 
         } catch (error) {
-            logger.error(`UTM Critical Navigation Failure: ${error.message}. Generating emergency direct vector.`);
-            
-            const distance = this.calculateDirectDistance(start, end);
+            // 3. Emergency fallback: straight line at 50m (Task 9)
+            logger.warn(`AI down - using fallback routing: ${error.message}`);
+
+            const midLat = (start.lat + end.lat) / 2;
+            const midLng = (start.lng + end.lng) / 2;
+            const distance = distanceCalculator.calculate2DDistance(start, end);
+
             return {
                 path: [
-                    { ...start, z: 0 },
-                    { ...end, z: 15 }
+                    { lat: start.lat, lng: start.lng, z: 50 },
+                    { lat: midLat,    lng: midLng,    z: 50 },
+                    { lat: end.lat,   lng: end.lng,   z: 50 },
                 ],
                 distance,
-                lane: null,
+                lane: 5,          // Default mid-range lane
                 laneAssigned: false,
+                altitude: 50,
             };
         }
     }
@@ -226,29 +235,6 @@ class NavigationService {
             }
         }
         return null;
-    }
-
-    calculatePathDistance(path) {
-        let total = 0;
-        for (let i = 0; i < path.length - 1; i++) {
-            total += this.calculateDirectDistance(path[i], path[i + 1]);
-        }
-        return total;
-    }
-
-    calculateDirectDistance(coord1, coord2) {
-        const R = 6371e3;
-        const φ1 = coord1.lat * Math.PI / 180;
-        const φ2 = coord2.lat * Math.PI / 180;
-        const Δφ = (coord2.lat - coord1.lat) * Math.PI / 180;
-        const Δλ = (coord2.lng - coord1.lng) * Math.PI / 180;
-
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c;
     }
 }
 
