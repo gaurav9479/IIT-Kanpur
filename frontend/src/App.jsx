@@ -52,7 +52,7 @@ function App() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header connected={connected} />
           <div className="flex-1 flex min-h-0 overflow-hidden relative">
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
               <Routes>
                 <Route
                   path="/"
