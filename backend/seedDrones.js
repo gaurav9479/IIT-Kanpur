@@ -9,39 +9,52 @@ const seedDrones = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("Connected to MongoDB for seeding...");
 
-    const existingDrones = await Drone.find();
-    if (existingDrones.length > 0) {
-      console.log(`Found ${existingDrones.length} existing drones. Making them idle...`);
-      await Drone.updateMany({}, { status: "idle", batteryLevel: 100 });
-    } else {
-      console.log("No drones found. Seeding 3 initial drones...");
-      await Drone.create([
-        {
-          droneId: "DRN-001",
-          type: "Quadcopter",
-          batteryLevel: 100,
-          payloadCapacity: 5,
-          status: "idle",
-          location: { lat: 26.5123, lng: 80.2329 }
-        },
-        {
-          droneId: "DRN-002",
-          type: "Quadcopter",
-          batteryLevel: 100,
-          payloadCapacity: 10,
-          status: "idle",
-          location: { lat: 26.5123, lng: 80.2329 }
-        },
-        {
-          droneId: "DRN-003",
-          type: "HeavyLift",
-          batteryLevel: 100,
-          payloadCapacity: 20,
-          status: "idle",
-          location: { lat: 26.5123, lng: 80.2329 }
-        }
-      ]);
-    }
+    console.log("Clearing existing drones...");
+    await Drone.deleteMany({});
+
+    console.log("Seeding 5 new drones for the fleet...");
+    await Drone.create([
+      {
+        droneId: "DRN-001",
+        type: "PrimeAir V1",
+        batteryLevel: 100,
+        payloadCapacity: 6,
+        status: "idle",
+        location: { lat: 26.5123, lng: 80.2329 }
+      },
+      {
+        droneId: "DRN-002",
+        type: "PrimeAir V2",
+        batteryLevel: 100,
+        payloadCapacity: 6,
+        status: "idle",
+        location: { lat: 26.5123, lng: 80.2329 }
+      },
+      {
+        droneId: "DRN-003",
+        type: "HeavyLift G1",
+        batteryLevel: 100,
+        payloadCapacity: 10,
+        status: "idle",
+        location: { lat: 26.5123, lng: 80.2329 }
+      },
+      {
+        droneId: "DRN-004",
+        type: "HeavyLift G2",
+        batteryLevel: 100,
+        payloadCapacity: 15,
+        status: "idle",
+        location: { lat: 26.5123, lng: 80.2329 }
+      },
+      {
+        droneId: "DRN-005",
+        type: "Titan X",
+        batteryLevel: 100,
+        payloadCapacity: 20,
+        status: "idle",
+        location: { lat: 26.5123, lng: 80.2329 }
+      }
+    ]);
 
     console.log("Seeding complete!");
     process.exit(0);

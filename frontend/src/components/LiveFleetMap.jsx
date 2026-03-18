@@ -118,7 +118,7 @@ const LiveFleetMap = ({ drones = {}, gridData = [] }) => {
                 <div className="p-2 min-w-[120px] bg-white rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black text-navy-900 uppercase tracking-widest">{drone.droneId}</span>
-                    <span className="text-[9px] font-bold text-navy-600 px-1.5 bg-navy-900/5 rounded uppercase tracking-tighter">{drone.status || 'Active'}</span>
+                    <span className="text-[9px] font-bold text-navy-600 px-1.5 bg-navy-900/5 rounded uppercase tracking-tighter">{drone.status === 'delivering' ? 'ONLINE' : drone.status === 'idle' ? 'STANDBY' : drone.status || 'Active'}</span>
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
