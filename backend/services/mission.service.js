@@ -81,9 +81,19 @@ class MissionService {
         const arrivalTimeArr = aiPrediction ? aiPrediction.estimatedArrival : new Date(Date.now() + 600000).toISOString();
         const batteryAfter = aiPrediction ? aiPrediction.batteryAfter : (drone.batteryLevel - batteryUsage);
 
-        if (drone.batteryLevel < batteryUsage * 1.15) {
-            logger.warn(`[MissionService] Insufficient battery for mission. Required: ${batteryUsage}%, Available: ${drone.batteryLevel}%`);
+        // Warn but only block if battery is truly too low to even take off (< 10%)
+        // For scenario testing, drones with 20-40% battery should be allowed to launch
+        // and will be diverted to Power Station mid-flight by drone3DService
+        if (drone.batteryLevel < 10) {
+            logger.warn(`[MissionService] Battery CRITICALLY low (${drone.batteryLevel}%) — unable to take off`);
             throw new Error("Insufficient battery for this mission based on AI prediction");
+        }
+        if (drone.batteryLevel < batteryUsage * 1.15) {
+            logger.warn(`[MissionService] Low battery (${drone.batteryLevel}%) for mission requiring ${batteryUsage.toFixed(1)}% — drone will divert to Power Station mid-flight`);
+            io.emit("event_log", {
+                message: `⚠️ ${drone.droneId} launching with low battery (${drone.batteryLevel.toFixed(0)}%) — Power Station diversion expected en-route`,
+                type: "warning"
+            });
         }
 
         let mission;

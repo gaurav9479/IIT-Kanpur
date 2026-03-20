@@ -7,6 +7,7 @@ const SafetyAlerts = ({ alerts }) => {
     switch (type) {
       case 'collision_critical': return <ShieldAlert className="text-white" />;
       case 'collision_warning': return <AlertTriangle className="text-white" />;
+      case 'traffic': return <MapPin className="text-white" />;
       default: return <Zap className="text-white" />;
     }
   };
@@ -25,9 +26,11 @@ const SafetyAlerts = ({ alerts }) => {
           <AnimatePresence>
             {alerts && alerts.length > 0 ? (
               alerts.map((alert, idx) => {
-                const isNfz = alert.nfzViolation;
+                const isNfz = alert.nfzViolation || alert.type === 'nfz_violation';
                 const isEmergency = !!alert.emergencyLanding;
-                const isProximity = alert.proximityAlerts && alert.proximityAlerts.length > 0;
+                const isProximity = (alert.proximityAlerts && alert.proximityAlerts.length > 0) || alert.type === 'collision_warning';
+                const isTraffic = alert.type === 'traffic';
+
                 let bgClass = 'bg-white-soft border-navy-900/10 hover:shadow-md text-navy-900';
                 let iconColor = 'text-navy-900';
                 
@@ -37,6 +40,9 @@ const SafetyAlerts = ({ alerts }) => {
                 } else if (isProximity) {
                    bgClass = 'bg-orange-50 border-orange-200 text-orange-800';
                    iconColor = 'text-orange-600';
+                } else if (isTraffic) {
+                  bgClass = 'bg-teal-50 border-teal-200 text-teal-800';
+                  iconColor = 'text-teal-600';
                 }
 
                 return (
@@ -60,10 +66,11 @@ const SafetyAlerts = ({ alerts }) => {
                   </div>
 
                   <p className="text-xs leading-relaxed font-bold">
-                    {isProximity && `Collision Risk: Drone ${alert.droneId}. `}
-                    {isNfz && `Drone ${alert.droneId} entered No-Fly Zone. `}
+                    {isTraffic && `Trafil Alert: High corridor density detected. ${alert.message}`}
+                    {isProximity && `Collision Risk: Drone ${alert.droneId} ↔ ${alert.droneB || 'Unknown'}.`}
+                    {isNfz && `Drone ${alert.droneId} entered No-Fly Zone. ${alert.message || ''}`}
                     {isEmergency && `Emergency Landing: ${alert.droneId} at ${alert.emergencyLanding.lat.toFixed(4)}, ${alert.emergencyLanding.lng.toFixed(4)}.`}
-                    {!isProximity && !isNfz && !isEmergency && `Security alert for Drone ${alert.droneId}.`}
+                    {!isTraffic && !isProximity && !isNfz && !isEmergency && `Security alert for Drone ${alert.droneId}.`}
                   </p>
 
                   <div className="flex items-center gap-2 px-3 py-2 bg-navy-900 text-white rounded-lg shadow-inner">

@@ -21,6 +21,7 @@ import authRoutes from "./routes/auth.routes.js";
 import collisionRoutes from "./routes/collision.routes.js";
 import navigationRoutes from "./routes/navigation.routes.js";
 import missionRoutes from "./routes/mission.routes.js";
+import scenarioRoutes from "./routes/scenario.routes.js";
 import collisionService from "./services/collision.service.js";
 import collision3D from "./services/collision3D.js";
 
@@ -64,6 +65,7 @@ app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/safety", collisionRoutes);
 app.use("/api/v1/navigation", navigationRoutes);
 app.use("/api/v1/missions", missionRoutes);
+app.use("/api/v1/scenarios", scenarioRoutes);
 
 // Global Error Handler
 import ApiError from "./utils/ApiError.js";

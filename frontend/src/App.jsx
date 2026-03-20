@@ -17,10 +17,10 @@ import AnalyticsPage from './components/AnalyticsPage';
 import SafetyZones from './components/SafetyZones';
 import SettingsPage from './components/SettingsPage';
 import AddFleetPage from './components/AddFleetPage';
-//import DroneSimulationPage from './components/DroneSimulationPage';
+import ScenarioPanel from './components/ScenarioPanel';
 import { useSocket } from './hooks/useSocket';
 
-const DashboardOverview = ({ drones, alerts, gridData, connected }) => (
+const DashboardOverview = ({ drones, alerts, gridData, warningDrones, connected }) => (
   <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
     {/* Connection status banner */}
     {!connected && (
@@ -32,10 +32,11 @@ const DashboardOverview = ({ drones, alerts, gridData, connected }) => (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <div className="lg:col-span-3 space-y-8">
         {/* Map receives both drones and gridData */}
-        <LiveFleetMap drones={drones} gridData={gridData} />
+        <LiveFleetMap drones={drones} gridData={gridData} warningDrones={warningDrones} />
         <DroneGrid drones={Object.values(drones)} />
       </div>
       <div className="lg:col-span-1 space-y-8">
+        <ScenarioPanel />
         <SafetyAlerts alerts={alerts} />
         <DecisionExplanationPanel />
       </div>
@@ -45,7 +46,7 @@ const DashboardOverview = ({ drones, alerts, gridData, connected }) => (
 
 function App() {
   // All real-time state managed centrally in one hook
-  const { drones, alerts, eventLog, gridData, connected } = useSocket();
+  const { drones, alerts, eventLog, gridData, warningDrones, connected } = useSocket();
 
   return (
     <Router>
@@ -63,6 +64,7 @@ function App() {
                       drones={drones}
                       alerts={alerts}
                       gridData={gridData}
+                      warningDrones={warningDrones}
                       connected={connected}
                     />
                   }

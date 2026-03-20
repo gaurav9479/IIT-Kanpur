@@ -22,7 +22,35 @@ class GridOccupancyService {
         if (!this.gridState.has(newKey)) {
             this.gridState.set(newKey, new Set());
         }
-        this.gridState.get(newKey).add(droneId);
+        const cellSet = this.gridState.get(newKey);
+        cellSet.add(droneId);
+
+        // --- TRAFFIC WARNING (Validated by AI) ---
+        if (cellSet.size >= 3) {
+            import('./ai.service.js').then(async (m) => {
+                const aiService = m.default;
+                // Use a default lane (L1) as grid cells don't map 1:1 to lanes
+                // but we want the AI's opinion on '3+ drones' density.
+                const aiResult = await aiService.predictCongestion(1, cellSet.size);
+                
+                import('../server.js').then(({ io }) => {
+                    const confidence = aiResult ? `(AI Confidence: ${(aiResult.confidence * 100).toFixed(0)}%)` : '';
+                    
+                    io.emit("event_log", {
+                        message: `🚩 TRAFFIC WARNING: High congestion at Node [${row}, ${col}] — ${cellSet.size} drones active. ${confidence}`,
+                        type: "warning"
+                    });
+                    
+                    io.emit("safety_alert", {
+                        type: "traffic",
+                        droneId: droneId,
+                        message: `High density at [${row}, ${col}] ${confidence}`,
+                        action: aiResult?.is_congested ? "Urgent: Deploy Detour" : "Monitor Corridor",
+                        timestamp: new Date().toISOString()
+                    });
+                });
+            });
+        }
     }
 
     isCellSafe(row, col, droneId) {

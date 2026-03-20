@@ -211,10 +211,10 @@ class NavigationService {
     // as blocked, runs A* with 8-dir movement, smooths.
     // ─────────────────────────────────────────────
     findAStarRoute(start, end) {
-        const GRID = 80;
+        const GRID = 150; // High resolution (increased from 120)
         const BOUNDS = {
-            minLat: 26.5080, maxLat: 26.5220,
-            minLng: 80.2220, maxLng: 80.2400
+            minLat: 26.5090, maxLat: 26.5215,
+            minLng: 80.2240, maxLng: 80.2395
         };
         const latStep = (BOUNDS.maxLat - BOUNDS.minLat) / GRID;
         const lngStep = (BOUNDS.maxLng - BOUNDS.minLng) / GRID;
@@ -227,6 +227,17 @@ class NavigationService {
                 const lat = BOUNDS.minLat + r * latStep;
                 const lng = BOUNDS.minLng + c * lngStep;
                 grid[r][c] = safetyService.isInsideNFZ({ lat, lng }) ? 1 : 0;
+            }
+        }
+
+        // Safety Buffer: Expand blocked areas by 1 cell only (150 grid = ~10m accuracy)
+        const finalGrid = grid.map(row => [...row]);
+        for (let r = 1; r < GRID - 1; r++) {
+            for (let c = 1; c < GRID - 1; c++) {
+                if (grid[r][c] === 1) {
+                    finalGrid[r-1][c] = 1; finalGrid[r+1][c] = 1;
+                    finalGrid[r][c-1] = 1; finalGrid[r][c+1] = 1;
+                }
             }
         }
 
@@ -246,8 +257,8 @@ class NavigationService {
         const ec = toCell(end.lat, end.lng);
 
         // Force start/end cells open
-        grid[sc.r][sc.c] = 0;
-        grid[ec.r][ec.c] = 0;
+        finalGrid[sc.r][sc.c] = 0;
+        finalGrid[ec.r][ec.c] = 0;
 
         // A* algorithm
         const heuristic = (r1, c1, r2, c2) => Math.sqrt((r1-r2)**2 + (c1-c2)**2);
@@ -259,19 +270,36 @@ class NavigationService {
             const cur = openSet.shift();
 
             if (cur.r === ec.r && cur.c === ec.c) {
-                // Reconstruct path
+                // Reconstruct raw path
                 const raw = [];
                 let t = cur;
                 while (t) { raw.push([t.r, t.c]); t = t.parent; }
                 raw.reverse();
 
-                // Smooth: keep every Nth point for cleaner line
-                const step = Math.max(1, Math.floor(raw.length / 15));
+                // ── TURNING-POINT PRESERVAL SMOOTHING ─────────────────
+                // Keep first + last always, every minStep-th point, AND
+                // any point where direction changes (NFZ boundary corner).
+                // Guarantees detour curvature is preserved in final path.
+                const MAX_WP  = 50;
+                const minStep = Math.max(1, Math.floor(raw.length / MAX_WP));
                 const smoothed = [raw[0]];
-                for (let i = step; i < raw.length - 1; i += step) {
-                    smoothed.push(raw[i]);
+
+                for (let i = 1; i < raw.length - 1; i++) {
+                    const prev = raw[i - 1];
+                    const curr = raw[i];
+                    const next = raw[i + 1];
+                    const dr1 = curr[0] - prev[0];
+                    const dc1 = curr[1] - prev[1];
+                    const dr2 = next[0] - curr[0];
+                    const dc2 = next[1] - curr[1];
+                    const isTurn = (dr1 !== dr2) || (dc1 !== dc2);
+                    const isStep = (i % minStep === 0);
+                    if (isTurn || isStep) {
+                        smoothed.push(curr);
+                    }
                 }
                 smoothed.push(raw[raw.length - 1]);
+                // ──────────────────────────────────────────────────────
 
                 return smoothed.map(([r, c]) => {
                     const ll = toLatLng(r, c);
@@ -288,7 +316,7 @@ class NavigationService {
                 const nr = cur.r + dr;
                 const nc = cur.c + dc;
                 if (nr < 0 || nr >= GRID || nc < 0 || nc >= GRID) continue;
-                if (grid[nr][nc] === 1) continue;
+                if (finalGrid[nr][nc] === 1) continue;
                 if (closed.has(`${nr},${nc}`)) continue;
 
                 const g = cur.g + (dr && dc ? 1.414 : 1);

@@ -16,8 +16,26 @@ export function useSocket() {
     const [alerts,    setAlerts]    = useState([]); // Last 20 safety alerts
     const [eventLog,  setEventLog]  = useState([]); // Last 50, newest first
     const [gridData,  setGridData]  = useState([]); // 100x100 congestion cells
+    const [warningDrones, setWarningDrones] = useState(new Set()); // Set of droneIds with active warnings
     const [connected, setConnected] = useState(false);
     const socketRef = useRef(null);
+
+    // --- Helper to add/remove warning drones ---
+    const triggerWarning = (droneId) => {
+      setWarningDrones(prev => {
+        const next = new Set(prev);
+        next.add(droneId);
+        return next;
+      });
+      // Clear after 10s
+      setTimeout(() => {
+        setWarningDrones(prev => {
+          const next = new Set(prev);
+          next.delete(droneId);
+          return next;
+        });
+      }, 10000);
+    };
 
     useEffect(() => {
         const socket = io(SOCKET_URL, { 
@@ -31,7 +49,7 @@ export function useSocket() {
         // --- Connection Events ---
         socket.on('connect', () => {
             setConnected(true);
-            socket.emit('join_admin'); // Required: join admin dashboard room
+            socket.emit('join_admin'); 
         });
 
         // --- Fetch Initial State ---
@@ -55,27 +73,17 @@ export function useSocket() {
             setConnected(false);
         });
 
-        // --- Event: telemetry_update (room: admin_dashboard) ---
-        // Payload: { droneId, location:{lat,lng}, gridPos:{row,col},
-        //            batteryLevel, altitude, speed,
-        //            safety:{nfzViolation, proximityAlerts, emergencyLanding} }
+        // --- Event: telemetry_update ---
         socket.on('telemetry_update', (data) => {
             setDrones(prev => ({ ...prev, [data.droneId]: data }));
         });
 
-        // --- Event: drone_update_* (individual drone updates, broadcast) ---
-        // We catch individual updates so we can update state by droneId.
-        // The backend emits "drone_update_${droneId}" for each drone.
-        // We listen generically via telemetry_update above (same payload).
-
-        // --- Event: grid_update (broadcast) ---
-        // Payload: Array of { x: row, y: col, density: number }
+        // --- Event: grid_update ---
         socket.on('grid_update', (data) => {
             setGridData(Array.isArray(data) ? data : []);
         });
 
-        // --- Event: safety_alert (room: admin_dashboard) ---
-        // Payload: { droneId, nfzViolation, proximityAlerts, emergencyLanding }
+        // --- Event: safety_alert ---
         socket.on('safety_alert', (alert) => {
             setAlerts(prev => [
                 { ...alert, timestamp: new Date().toISOString() },
@@ -83,8 +91,41 @@ export function useSocket() {
             ].slice(0, MAX_ALERTS));
         });
 
-        // --- Event: event_log (broadcast) ---
-        // Payload: { message: string, type: "info"|"warning"|"error" }
+        // --- 🆕 3D Collision Monitoring ---
+        socket.on('collision_warning_3d', (data) => {
+            triggerWarning(data.droneA);
+            triggerWarning(data.droneB);
+            setAlerts(prev => [
+                { 
+                  type: 'collision_warning', 
+                  severity: data.severity,
+                  droneId: data.droneA, // Primary drone
+                  droneB: data.droneB,
+                  proximityAlerts: [{ otherDroneId: data.droneB, distance: data.distanceTotal }],
+                  action: data.resolution?.action || 'Automatic Avoidance',
+                  timestamp: data.timestamp || new Date().toISOString() 
+                },
+                ...prev
+            ].slice(0, MAX_ALERTS));
+        });
+
+        // --- 🆕 NFZ Violation Monitoring ---
+        socket.on('nfz_violation', (data) => {
+            triggerWarning(data.droneId);
+            setAlerts(prev => [
+                { 
+                  type: 'nfz_violation', 
+                  nfzViolation: true,
+                  droneId: data.droneId,
+                  message: `Unauthorized entry: ${data.nfzName}`,
+                  action: 'Emergency Hover Initiated',
+                  timestamp: data.timestamp || new Date().toISOString() 
+                },
+                ...prev
+            ].slice(0, MAX_ALERTS));
+        });
+
+        // --- Event: event_log ---
         socket.on('event_log', (entry) => {
             setEventLog(prev => [
                 { ...entry, timestamp: new Date().toISOString() },
@@ -98,10 +139,12 @@ export function useSocket() {
             socket.off('telemetry_update');
             socket.off('grid_update');
             socket.off('safety_alert');
+            socket.off('collision_warning_3d');
+            socket.off('nfz_violation');
             socket.off('event_log');
             socket.disconnect();
         };
     }, []);
 
-    return { drones, alerts, eventLog, gridData, connected };
+    return { drones, alerts, eventLog, gridData, warningDrones, connected };
 }

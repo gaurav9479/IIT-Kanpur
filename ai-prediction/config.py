@@ -5,7 +5,7 @@
 
 # ─── LANES ───────────────────────────────────────────────────────
 NUM_LANES = 10                # Total air lanes on IITK campus
-MAX_DRONES_PER_LANE = 5       # More than this = congested lane
+MAX_DRONES_PER_LANE = 3       # More than this = congested lane
 
 # ─── ALTITUDE ────────────────────────────────────────────────────
 ALTITUDE_BUFFER = 10          # Metres of safety gap between lanes
