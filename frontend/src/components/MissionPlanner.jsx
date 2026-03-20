@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   MapContainer, TileLayer, Marker, Polyline,
-  Polygon, Tooltip, CircleMarker
+  Polygon, Tooltip, CircleMarker, useMapEvents
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -68,6 +68,18 @@ const ALL_LOCATIONS = [
   { name: "Shopping Complex",    lat: 26.5115, lng: 80.2300 },
 ];
 
+// ─────────────────────────────────────────────
+// MAP CLICK HANDLER — picks lat/lng on click
+// ─────────────────────────────────────────────
+const MapClickHandler = ({ onClick }) => {
+  useMapEvents({
+    click(e) {
+      onClick({ lat: e.latlng.lat, lng: e.latlng.lng });
+    }
+  });
+  return null;
+};
+
 const MissionPlanner = () => {
   const [source,       setSource]       = useState(null);
   const [destination,  setDestination]  = useState(null);
@@ -77,6 +89,17 @@ const MissionPlanner = () => {
   const [feedback,     setFeedback]     = useState(null);
   const [routePath,    setRoutePath]    = useState(null);
   const [routeStats,   setRouteStats]   = useState(null);
+  const [clickMode,    setClickMode]    = useState(false); // map click mode
+
+  const handleMapClick = (latlng) => {
+    if (!clickMode) return;
+    if (!source) {
+      setSource({ name: `📍 ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`, ...latlng });
+    } else if (!destination) {
+      setDestination({ name: `📍 ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`, ...latlng });
+      setClickMode(false); // done picking
+    }
+  };
 
   // Auto-preview route when both selected
   useEffect(() => {
@@ -147,7 +170,13 @@ const MissionPlanner = () => {
           </p>
         </div>
         <div className="flex gap-4">
-          <button onClick={() => { setSource(null); setDestination(null); setRoutePath(null); setRouteStats(null); setFeedback(null); }}
+          <button onClick={() => { setClickMode(true); setSource(null); setDestination(null); setRoutePath(null); setRouteStats(null); setFeedback(null); }}
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors border ${
+              clickMode ? 'bg-green-500 text-white border-green-600 animate-pulse' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+            }`} title="Click on map to pick source & destination">
+            <MapPin size={14} className="inline mr-1" /> Pick on Map
+          </button>
+          <button onClick={() => { setClickMode(false); setSource(null); setDestination(null); setRoutePath(null); setRouteStats(null); setFeedback(null); }}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white-soft hover:bg-navy-900 hover:text-white text-navy-900 font-black uppercase text-[10px] tracking-widest transition-all border border-navy-900/10 shadow-sm"
           >
             <Trash2 size={16} /> Clear
@@ -235,11 +264,22 @@ const MissionPlanner = () => {
         </div>
       </div>
 
-      {/* Map */}
+      {/* Click-on-Map instruction banner */}
+      {clickMode && (
+        <div className="mx-8 mb-2 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 bg-green-50 border-2 border-green-400 text-green-800 animate-pulse">
+          <MapPin size={18} className="text-green-600" />
+          {!source
+            ? "👆 Click anywhere on the map to set SOURCE (takeoff point)"
+            : "👆 Now click on the map to set DESTINATION (drop point)"}
+        </div>
+      )}
       <div className="flex-1 mx-8 mb-8 rounded-3xl overflow-hidden glass-card relative border border-navy-900/10 shadow-2xl">
         <MapContainer center={MAP_CENTER} zoom={MAP_ZOOM} className="h-full w-full z-0">
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+
+          {/* Map click handler for picking source/dest */}
+          <MapClickHandler onClick={handleMapClick} />
 
           <CongestionOverlay />
 
