@@ -1,4 +1,3 @@
-import axios from "axios";
 import logger from "../utils/logger.js";
 import mapService from "./map.service.js";
 import gridOccupancyService from "./gridOccupancy.service.js";
@@ -10,9 +9,6 @@ import {
     MAX_DRONES_PER_SLOT,
     NO_FLY_ZONES
 } from "../config/safety.config.js";
-import * as campusGraph from "../config/campusGraph.config.js";
-
-const NAV_URL = process.env.NAV_MODULE_URL || "http://localhost:8001";
 
 // ─────────────────────────────────────────────
 // TIME-SLOT OCCUPANCY TABLE
@@ -339,102 +335,36 @@ class NavigationService {
     async get3DRoute(start, end, options = {}) {
         const droneId = options.droneId;
 
-        // 1. Attempt Distributed Microservice Call (External Pathfinding Module)
-        try {
-            const response = await axios.post(`${NAV_URL}/path`, {
-                start,
-                end,
-                droneId,
-                obstacles: options.obstacles || [],
-                congestionScores: options.congestionScores || []
-            }, { timeout: 2000 });
-
-            if (response.data && response.data.path) {
-                logger.info(`External Navigation successful for Drone ${droneId}`);
-                return response.data;
-            }
-        } catch (error) {
-            logger.warn(`External Navigation Module unreachable: ${error.message}. Using local A* engine.`);
-        }
-
-        // ─────────────────────────────────────────────
-        // 2. PRIMARY: A* GRID PATHFINDING (all routes)
-        //    Builds 80x80 grid, avoids all NFZ cells,
-        //    returns smooth waypoints around red zones.
-        // ─────────────────────────────────────────────
+        // ── A* GRID PATHFINDING — ONLY ALGORITHM ────────────────
+        // Builds a 150×150 grid over the campus, marks all NFZ cells
+        // with a safety buffer, and finds the optimal safe path.
+        // No fallbacks. If A* cannot find a route, the mission is rejected.
+        // ─────────────────────────────────────────────────────────
         const astarPath = this.findAStarRoute(start, end);
-        if (astarPath && astarPath.length >= 2) {
-            const slotIndex = getTimeSlot(Date.now());
-            const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
-            
-            // Use preferred operatingAltitude if provided, else use lane altitude or default to 50
-            const altitude = options.operatingAltitude || (lane ? lane.altitude : 50);
 
-            if (lane) {
-                reserveSlot(lane.id, slotIndex, droneId);
-                logger.info(`[NAV] Reserved Lane ${lane.id} Slot ${slotIndex} for ${droneId}`);
-            }
-
-            logger.info(`[NAV] A* path: ${astarPath.length} waypoints for ${droneId}`);
-            return {
-                path: astarPath.map(p => ({ ...p, z: altitude })),
-                distance: distanceCalculator.calculatePathDistance(astarPath),
-                lane: lane ? lane.id : null,
-                slotIndex,
-                altitude,
-                laneAssigned: !!lane,
-                source: "astar-grid"
-            };
+        if (!astarPath || astarPath.length < 2) {
+            logger.error(`[NAV] A* found no safe route for ${droneId}. Mission rejected — no straight-line or alternative fallback.`);
+            throw new Error(`No safe A* route found between the specified coordinates. Adjust start/end points away from NFZ boundaries.`);
         }
 
-        // 3. FALLBACK: Graph BFS (if A* fails for some reason)
-        try {
-            const fromNode = this.findNearestNode(start);
-            const toNode = this.findNearestNode(end);
-            if (!fromNode || !toNode) throw new Error("CANNOT_LOCATE_NEAREST_NODES");
+        const slotIndex = getTimeSlot(Date.now());
+        const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
+        const altitude = options.operatingAltitude || (lane ? lane.altitude : 50);
 
-            const graphPathNodes = this.findGraphPath(fromNode.id, toNode.id);
-            if (!graphPathNodes) throw new Error("NO_GRAPH_PATH");
-
-            const slotIndex = getTimeSlot(Date.now());
-            const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
-            
-            // Use preferred operatingAltitude if provided, else use lane altitude or default to 50
-            const altitude = options.operatingAltitude || (lane ? lane.altitude : 50);
-
-            const finalPath = [
-                { lat: start.lat, lng: start.lng, z: altitude },
-                ...graphPathNodes.map(p => ({ ...p, z: altitude })),
-                { lat: end.lat, lng: end.lng, z: altitude }
-            ];
-
-            if (lane) {
-                reserveSlot(lane.id, slotIndex, droneId);
-            }
-
-            return {
-                path: finalPath,
-                distance: distanceCalculator.calculatePathDistance(finalPath),
-                lane: lane ? lane.id : null,
-                slotIndex,
-                altitude,
-                laneAssigned: !!lane,
-                source: "graph-stitched"
-            };
-        } catch (error) {
-            logger.error(`[NAV] All routing failed for ${droneId}: ${error.message}`);
+        if (lane) {
+            reserveSlot(lane.id, slotIndex, droneId);
+            logger.info(`[NAV] Reserved Lane ${lane.id} Slot ${slotIndex} for ${droneId}`);
         }
 
-        // 4. Absolute last resort (straight line)
+        logger.info(`[NAV] A* route: ${astarPath.length} waypoints for ${droneId} | altitude: ${altitude}m`);
         return {
-            path: [
-                { lat: start.lat, lng: start.lng, z: 50 },
-                { lat: end.lat,   lng: end.lng,   z: 50 },
-            ],
-            distance: distanceCalculator.calculate2DDistance(start, end),
-            lane: 5,
-            laneAssigned: false,
-            altitude: options.operatingAltitude || 50,
+            path: astarPath.map(p => ({ ...p, z: altitude })),
+            distance: distanceCalculator.calculatePathDistance(astarPath),
+            lane: lane ? lane.id : null,
+            slotIndex,
+            altitude,
+            laneAssigned: !!lane,
+            source: "astar-grid"
         };
     }
 

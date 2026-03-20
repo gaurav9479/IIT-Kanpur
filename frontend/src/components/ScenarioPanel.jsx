@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Play, Zap, ShieldAlert, Activity, RefreshCcw } from 'lucide-react';
+import { Play, Zap, Activity, RefreshCcw, RotateCcw } from 'lucide-react';
 import { API_URL } from '../config/mapConfig';
 
 const ScenarioPanel = () => {
     const [loading, setLoading] = useState(null);
+    const [resetting, setResetting] = useState(false);
 
     const scenarios = [
         {
@@ -34,7 +35,7 @@ const ScenarioPanel = () => {
         {
             id: 'battery',
             name: 'Critical Battery Failsafe',
-            desc: 'Drone launched at 18% to trigger mid-air grounding logic.',
+            desc: 'Long cross-campus mission with 35% battery — triggers Power Station divert.',
             icon: <Zap className="text-orange-500" size={18} fill="currentColor" />,
             color: 'from-orange-50/50 to-orange-100/50',
             border: 'border-orange-200'
@@ -45,7 +46,6 @@ const ScenarioPanel = () => {
         setLoading(id);
         try {
             await axios.post(`${API_URL}/scenarios/run/${id}`);
-            // Feedback is handled by Socket.io event_log
         } catch (error) {
             console.error('Scenario failed:', error);
             alert('Failed to launch scenario. Check server connection.');
@@ -53,6 +53,20 @@ const ScenarioPanel = () => {
             setTimeout(() => setLoading(null), 1000);
         }
     };
+
+    const resetEnv = async () => {
+        setResetting(true);
+        try {
+            await axios.post(`${API_URL}/scenarios/reset`);
+        } catch (error) {
+            console.error('Reset failed:', error);
+            alert('Failed to reset environment. Check server connection.');
+        } finally {
+            setTimeout(() => setResetting(false), 1200);
+        }
+    };
+
+    const isDisabled = loading !== null || resetting;
 
     return (
         <div className="glass-card p-6 border border-navy-900/10 shadow-xl rounded-3xl space-y-5">
@@ -74,7 +88,7 @@ const ScenarioPanel = () => {
                 {scenarios.map((s) => (
                     <button
                         key={s.id}
-                        disabled={loading !== null}
+                        disabled={isDisabled}
                         onClick={() => runScenario(s.id)}
                         className={`group relative text-left p-4 rounded-2xl border ${s.border} bg-gradient-to-br ${s.color} hover:scale-[1.02] active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:scale-100 shadow-sm hover:shadow-md overflow-hidden`}
                     >
@@ -104,11 +118,20 @@ const ScenarioPanel = () => {
                 ))}
             </div>
 
-            <div className="p-3 bg-navy-900/5 rounded-xl border border-dashed border-navy-900/20">
-                <p className="text-[9px] text-navy-500 font-bold uppercase text-center leading-normal">
-                    ⚠️ Scenarios will auto-reset all drones <br/> and clear current missions.
-                </p>
-            </div>
+            {/* Reset Button */}
+            <button
+                disabled={isDisabled}
+                onClick={resetEnv}
+                className="group w-full flex items-center justify-center gap-2 p-3 rounded-2xl border border-red-200 bg-gradient-to-br from-red-50/60 to-red-100/60 hover:from-red-100 hover:to-red-200 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:scale-100 shadow-sm hover:shadow-md"
+            >
+                {resetting
+                    ? <RefreshCcw className="animate-spin text-red-500" size={15} />
+                    : <RotateCcw className="text-red-500 group-hover:rotate-[-30deg] transition-transform duration-300" size={15} />
+                }
+                <span className="text-red-600 font-black text-[10px] uppercase tracking-widest">
+                    {resetting ? 'Resetting...' : 'Reset Environment'}
+                </span>
+            </button>
         </div>
     );
 };
