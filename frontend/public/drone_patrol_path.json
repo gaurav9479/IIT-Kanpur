@@ -1,0 +1,78 @@
+{
+  "patrol_route": [
+    { "lat": 26.5135, "lng": 80.2325, "node": "OAT" },
+    { "lat": 26.5132, "lng": 80.2310, "node": "OAT→Bookstore" },
+    { "lat": 26.5128, "lng": 80.2302, "node": "Bank_ATM" },
+    { "lat": 26.5125, "lng": 80.2310, "node": "Medical_Center" },
+    { "lat": 26.5122, "lng": 80.2318, "node": "Student_Gymkhana" },
+    { "lat": 26.5118, "lng": 80.2332, "node": "Canteen_South" },
+    { "lat": 26.5115, "lng": 80.2325, "node": "Hall_4→path" },
+    { "lat": 26.5110, "lng": 80.2325, "node": "Hall_5" },
+    { "lat": 26.5112, "lng": 80.2340, "node": "Hall_5→Hall_6" },
+    { "lat": 26.5108, "lng": 80.2340, "node": "Hall_6" },
+    { "lat": 26.5112, "lng": 80.2355, "node": "Hall_7" },
+    { "lat": 26.5118, "lng": 80.2365, "node": "Hall_8" },
+    { "lat": 26.5130, "lng": 80.2375, "node": "Hall_9" },
+    { "lat": 26.5140, "lng": 80.2380, "node": "Hall_10" },
+    { "lat": 26.5150, "lng": 80.2375, "node": "Hall_11" },
+    { "lat": 26.5158, "lng": 80.2370, "node": "Hall_12" },
+    { "lat": 26.5165, "lng": 80.2370, "node": "Materials_Science" },
+    { "lat": 26.5168, "lng": 80.2360, "node": "Mechanical_Dept" },
+    { "lat": 26.5172, "lng": 80.2350, "node": "Electrical_Dept" },
+    { "lat": 26.5178, "lng": 80.2340, "node": "Computer_Science_Dept" },
+    { "lat": 26.5185, "lng": 80.2315, "node": "Faculty_Building" },
+    { "lat": 26.5190, "lng": 80.2330, "node": "Lecture_Hall_Complex" },
+    { "lat": 26.5188, "lng": 80.2285, "node": "Physics_Dept" },
+    { "lat": 26.5182, "lng": 80.2295, "node": "Chemistry_Dept" },
+    { "lat": 26.5175, "lng": 80.2305, "node": "Civil_Dept" },
+    { "lat": 26.5170, "lng": 80.2325, "node": "Admin_Block" },
+    { "lat": 26.5168, "lng": 80.2330, "node": "Director_Office" },
+    { "lat": 26.5155, "lng": 80.2322, "node": "Library" },
+    { "lat": 26.5160, "lng": 80.2345, "node": "Aerospace_Dept" },
+    { "lat": 26.5148, "lng": 80.2248, "node": "Security_Office→path" },
+    { "lat": 26.5145, "lng": 80.2240, "node": "Main_Gate" },
+    { "lat": 26.5137, "lng": 80.2260, "node": "Main_Gate→OAT" },
+    { "lat": 26.5130, "lng": 80.2285, "node": "Hall_1" },
+    { "lat": 26.5125, "lng": 80.2295, "node": "Hall_2" },
+    { "lat": 26.5120, "lng": 80.2305, "node": "Hall_3" },
+    { "lat": 26.5115, "lng": 80.2300, "node": "Shopping_Complex" },
+    { "lat": 26.5108, "lng": 80.2295, "node": "Football_Ground" },
+    { "lat": 26.5095, "lng": 80.2320, "node": "Cricket_Ground" },
+    { "lat": 26.5092, "lng": 80.2338, "node": "Girls_Hostel_2" },
+    { "lat": 26.5098, "lng": 80.2350, "node": "Girls_Hostel_1" },
+    { "lat": 26.5100, "lng": 80.2335, "node": "path→Power_Station" },
+    { "lat": 26.5090, "lng": 80.2375, "node": "Power_Station" },
+    { "lat": 26.5095, "lng": 80.2360, "node": "Power_Station→Cafeteria" },
+    { "lat": 26.5105, "lng": 80.2350, "node": "path→Cafeteria" },
+    { "lat": 26.5142, "lng": 80.2322, "node": "Cafeteria_Central" },
+    { "lat": 26.5195, "lng": 80.2270, "node": "Guest_House" },
+    { "lat": 26.5205, "lng": 80.2260, "node": "Faculty_Residences_A" },
+    { "lat": 26.5210, "lng": 80.2275, "node": "Faculty_Residences_B" },
+    { "lat": 26.5180, "lng": 80.2308, "node": "Canteen_North" },
+    { "lat": 26.5135, "lng": 80.2325, "node": "OAT (loop)" }
+  ],
+  "power_station": { "lat": 26.5090, "lng": 80.2375 },
+  "nfz_circles": [
+    { "name": "NFZ Admin Block", "center": [26.5168, 80.2330], "radius_m": 80 },
+    { "name": "NFZ Library",     "center": [26.5155, 80.2322], "radius_m": 70 },
+    { "name": "NFZ Director",    "center": [26.5170, 80.2325], "radius_m": 60 },
+    { "name": "NFZ Main Gate",   "center": [26.5145, 80.2240], "radius_m": 90 },
+    { "name": "NFZ Power Hub",   "center": [26.5090, 80.2280], "radius_m": 75 }
+  ],
+  "exclusion_zones": [
+    {
+      "name": "West Agriculture",
+      "coords": [
+        [26.5170, 80.2220], [26.5190, 80.2220],
+        [26.5190, 80.2240], [26.5170, 80.2240]
+      ]
+    },
+    {
+      "name": "North-East Periphery",
+      "coords": [
+        [26.5205, 80.2385], [26.5215, 80.2385],
+        [26.5215, 80.2400], [26.5205, 80.2400]
+      ]
+    }
+  ]
+}

@@ -11,13 +11,15 @@ import {
   Settings, 
   RotateCcw,
   LogOut,
-  PlusCircle
+  PlusCircle,
+  Navigation2
 } from 'lucide-react';
 
 const Sidebar = () => {
   const location = useLocation();
   const menuItems = [
     { icon: LayoutDashboard, label: 'Overview', path: '/' },
+    { icon: Navigation2, label: '🚁 Drone Sim', path: '/drone-sim', highlight: true },
     { icon: MapIcon, label: 'Mission Planner', path: '/planner' },
     { icon: Plane, label: 'Fleet Management', path: '/fleet' },
     { icon: ShoppingCart, label: 'Active Orders', path: '/orders' },
@@ -45,7 +47,13 @@ const Sidebar = () => {
           <Link
             key={index}
             to={item.path}
-            className={`nav-link ${location.pathname === item.path ? 'active' : 'text-navy-700 hover:text-navy-900 hover:bg-navy-900/5'}`}
+            className={`nav-link ${
+              location.pathname === item.path
+                ? 'active'
+                : item.highlight
+                ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 border border-amber-200'
+                : 'text-navy-700 hover:text-navy-900 hover:bg-navy-900/5'
+            }`}
           >
             <item.icon size={20} />
             <span className="font-bold text-xs uppercase tracking-widest">{item.label}</span>
