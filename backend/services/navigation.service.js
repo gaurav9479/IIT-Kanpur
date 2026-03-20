@@ -134,6 +134,32 @@ class NavigationService {
         return ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
     }
 
+    getZoneCenterAndRadius(zoneName) {
+        const zone = NO_FLY_ZONES.find(z => z.name === zoneName);
+        if (!zone) return null;
+        let sumLat = 0, sumLng = 0;
+        zone.positions.forEach(p => { sumLat += p.lat; sumLng += p.lng; });
+        const center = { lat: sumLat / zone.positions.length, lng: sumLng / zone.positions.length };
+        
+        let maxDist = 0;
+        zone.positions.forEach(p => {
+            const d = Math.sqrt(Math.pow(p.lat - center.lat, 2) + Math.pow(p.lng - center.lng, 2));
+            if (d > maxDist) maxDist = d;
+        });
+        return { center, radius: maxDist };
+    }
+
+    /**
+     * Check if a node's coordinates fall inside any NFZ polygon.
+     * Used to filter BFS so drones never route through red zones.
+     */
+    isNodeInsideNFZ(nodeId) {
+        const { CAMPUS_NODES } = campusGraph;
+        const node = CAMPUS_NODES.find(n => n.id === nodeId);
+        if (!node) return false;
+        return !!safetyService.isInsideNFZ({ lat: node.lat, lng: node.lng });
+    }
+
     findGraphPath(fromNodeId, toNodeId) {
         const { ADJACENCY, CAMPUS_NODES } = campusGraph;
         
@@ -165,19 +191,120 @@ class NavigationService {
             
             const neighbors = ADJACENCY[current] || [];
             for (const neighbor of neighbors) {
+                // SKIP neighbors that are inside No-Fly Zones
+                // (source and destination are allowed, only intermediate nodes blocked)
                 if (!visited.has(neighbor)) {
-                    const currentNode = CAMPUS_NODES.find(n => n.id === current);
-                    const neighborNode = CAMPUS_NODES.find(n => n.id === neighbor);
-
-                    // NFZ Check: Skip if the edge between nodes crosses an NFZ
-                    if (this.isEdgeInsideNFZ(currentNode, neighborNode)) {
-                        continue; 
+                    if (neighbor !== fromNodeId && neighbor !== toNodeId && this.isNodeInsideNFZ(neighbor)) {
+                        continue; // skip NFZ node — drone goes around
                     }
                     queue.push([neighbor, [...path, neighbor]]);
                 }
             }
         }
         
+        return null;
+    }
+
+    // ─────────────────────────────────────────────
+    // A* GRID PATHFINDING — Routes around NFZ areas
+    // Builds an 80x80 occupancy grid, marks NFZ cells
+    // as blocked, runs A* with 8-dir movement, smooths.
+    // ─────────────────────────────────────────────
+    findAStarRoute(start, end) {
+        const GRID = 80;
+        const BOUNDS = {
+            minLat: 26.5080, maxLat: 26.5220,
+            minLng: 80.2220, maxLng: 80.2400
+        };
+        const latStep = (BOUNDS.maxLat - BOUNDS.minLat) / GRID;
+        const lngStep = (BOUNDS.maxLng - BOUNDS.minLng) / GRID;
+
+        // Build occupancy grid (1 = blocked by NFZ, 0 = safe)
+        const grid = [];
+        for (let r = 0; r < GRID; r++) {
+            grid[r] = [];
+            for (let c = 0; c < GRID; c++) {
+                const lat = BOUNDS.minLat + r * latStep;
+                const lng = BOUNDS.minLng + c * lngStep;
+                grid[r][c] = safetyService.isInsideNFZ({ lat, lng }) ? 1 : 0;
+            }
+        }
+
+        // Convert lat/lng to grid cell
+        const toCell = (lat, lng) => ({
+            r: Math.max(0, Math.min(GRID - 1, Math.round((lat - BOUNDS.minLat) / latStep))),
+            c: Math.max(0, Math.min(GRID - 1, Math.round((lng - BOUNDS.minLng) / lngStep)))
+        });
+
+        // Convert grid cell to lat/lng
+        const toLatLng = (r, c) => ({
+            lat: BOUNDS.minLat + r * latStep,
+            lng: BOUNDS.minLng + c * lngStep
+        });
+
+        const sc = toCell(start.lat, start.lng);
+        const ec = toCell(end.lat, end.lng);
+
+        // Force start/end cells open
+        grid[sc.r][sc.c] = 0;
+        grid[ec.r][ec.c] = 0;
+
+        // A* algorithm
+        const heuristic = (r1, c1, r2, c2) => Math.sqrt((r1-r2)**2 + (c1-c2)**2);
+        const openSet = [{ r: sc.r, c: sc.c, g: 0, f: heuristic(sc.r, sc.c, ec.r, ec.c), parent: null }];
+        const closed = new Set();
+
+        while (openSet.length > 0) {
+            openSet.sort((a, b) => a.f - b.f);
+            const cur = openSet.shift();
+
+            if (cur.r === ec.r && cur.c === ec.c) {
+                // Reconstruct path
+                const raw = [];
+                let t = cur;
+                while (t) { raw.push([t.r, t.c]); t = t.parent; }
+                raw.reverse();
+
+                // Smooth: keep every Nth point for cleaner line
+                const step = Math.max(1, Math.floor(raw.length / 15));
+                const smoothed = [raw[0]];
+                for (let i = step; i < raw.length - 1; i += step) {
+                    smoothed.push(raw[i]);
+                }
+                smoothed.push(raw[raw.length - 1]);
+
+                return smoothed.map(([r, c]) => {
+                    const ll = toLatLng(r, c);
+                    return { lat: ll.lat, lng: ll.lng, z: 50 };
+                });
+            }
+
+            const key = `${cur.r},${cur.c}`;
+            if (closed.has(key)) continue;
+            closed.add(key);
+
+            // 8-directional neighbors
+            for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
+                const nr = cur.r + dr;
+                const nc = cur.c + dc;
+                if (nr < 0 || nr >= GRID || nc < 0 || nc >= GRID) continue;
+                if (grid[nr][nc] === 1) continue;
+                if (closed.has(`${nr},${nc}`)) continue;
+
+                const g = cur.g + (dr && dc ? 1.414 : 1);
+                const existing = openSet.find(o => o.r === nr && o.c === nc);
+
+                if (!existing) {
+                    openSet.push({ r: nr, c: nc, g, f: g + heuristic(nr, nc, ec.r, ec.c), parent: cur });
+                } else if (g < existing.g) {
+                    existing.g = g;
+                    existing.f = g + heuristic(nr, nc, ec.r, ec.c);
+                    existing.parent = cur;
+                }
+            }
+        }
+
+        logger.warn('[NAV] A* grid pathfinding found no route.');
         return null;
     }
 
@@ -192,43 +319,57 @@ class NavigationService {
                 droneId,
                 obstacles: options.obstacles || [],
                 congestionScores: options.congestionScores || []
-            }, { timeout: 2000 }); // 2-second fail-fast timeout
+            }, { timeout: 2000 });
 
             if (response.data && response.data.path) {
                 logger.info(`External Navigation successful for Drone ${droneId}`);
                 return response.data;
             }
         } catch (error) {
-            logger.warn(`External Navigation Module unreachable/timeout: ${error.message}. Switching to local UTM Navigation Engine.`);
+            logger.warn(`External Navigation Module unreachable: ${error.message}. Using local A* engine.`);
         }
 
-        // 2. Fallback Block - Graph Priority
+        // ─────────────────────────────────────────────
+        // 2. PRIMARY: A* GRID PATHFINDING (all routes)
+        //    Builds 80x80 grid, avoids all NFZ cells,
+        //    returns smooth waypoints around red zones.
+        // ─────────────────────────────────────────────
+        const astarPath = this.findAStarRoute(start, end);
+        if (astarPath && astarPath.length >= 2) {
+            const slotIndex = getTimeSlot(Date.now());
+            const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
+            const altitude = lane ? lane.altitude : 50;
+
+            if (lane) {
+                reserveSlot(lane.id, slotIndex, droneId);
+                logger.info(`[NAV] Reserved Lane ${lane.id} Slot ${slotIndex} for ${droneId}`);
+            }
+
+            logger.info(`[NAV] A* path: ${astarPath.length} waypoints for ${droneId}`);
+            return {
+                path: astarPath.map(p => ({ ...p, z: altitude })),
+                distance: distanceCalculator.calculatePathDistance(astarPath),
+                lane: lane ? lane.id : null,
+                slotIndex,
+                altitude,
+                laneAssigned: !!lane,
+                source: "astar-grid"
+            };
+        }
+
+        // 3. FALLBACK: Graph BFS (if A* fails for some reason)
         try {
             const fromNode = this.findNearestNode(start);
             const toNode = this.findNearestNode(end);
-            
             if (!fromNode || !toNode) throw new Error("CANNOT_LOCATE_NEAREST_NODES");
 
             const graphPathNodes = this.findGraphPath(fromNode.id, toNode.id);
-            
-            if (!graphPathNodes) {
-                throw new Error("NO_GRAPH_PATH");
-            }
-
-            // Stitching Logic: [Start] -> [Graph] -> [End]
-            // Check NFZ for entry segment: Start -> fromNode
-            const entryNFZ = this.isEdgeInsideNFZ(start, fromNode);
-            if (entryNFZ) throw new Error(`START_SEGMENT_BLOCKED_BY_${entryNFZ}`);
-
-            // Check NFZ for exit segment: toNode -> End
-            const exitNFZ = this.isEdgeInsideNFZ(toNode, end);
-            if (exitNFZ) throw new Error(`END_SEGMENT_BLOCKED_BY_${exitNFZ}`);
+            if (!graphPathNodes) throw new Error("NO_GRAPH_PATH");
 
             const slotIndex = getTimeSlot(Date.now());
             const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
             const altitude = lane ? lane.altitude : 50;
 
-            // Build final path: Start -> middle nodes -> End
             const finalPath = [
                 { lat: start.lat, lng: start.lng, z: altitude },
                 ...graphPathNodes.map(p => ({ ...p, z: altitude })),
@@ -237,7 +378,6 @@ class NavigationService {
 
             if (lane) {
                 reserveSlot(lane.id, slotIndex, droneId);
-                logger.info(`[NAV] Reserved Lane ${lane.id} Slot ${slotIndex} for ${droneId}`);
             }
 
             return {
@@ -250,51 +390,20 @@ class NavigationService {
                 source: "graph-stitched"
             };
         } catch (error) {
-            if (error.message === "NO_GRAPH_PATH") {
-                logger.error(`No flight corridor exists between selected nodes.`);
-                throw error; // Propagate specific validation error
-            }
-            // 3. Emergency fallback: attempt a 3-point path to avoid NFZs
-            logger.warn(`Fallback routing triggered: ${error.message}`);
-
-            // Check if direct line is blocked
-            const blockingZone = this.isEdgeInsideNFZ(start, end);
-            
-            if (blockingZone) {
-                logger.warn(`Direct path blocked by ${blockingZone}. Attempting reroute...`);
-                // Simple detour: pick a waypoint offset from the midpoint
-                const midLat = (start.lat + end.lat) / 2 + 0.002; // Offset north
-                const midLng = (start.lng + end.lng) / 2 + 0.002; // Offset east
-                const mid = { lat: midLat, lng: midLng };
-
-                if (!this.isEdgeInsideNFZ(start, mid) && !this.isEdgeInsideNFZ(mid, end)) {
-                    const path = [
-                        { lat: start.lat, lng: start.lng, z: 50 },
-                        { ...mid, z: 50 },
-                        { lat: end.lat, lng: end.lng, z: 50 },
-                    ];
-                    return {
-                        path,
-                        distance: distanceCalculator.calculatePathDistance(path),
-                        lane: 5,
-                        laneAssigned: false,
-                        altitude: 50,
-                    };
-                }
-            }
-
-            // Absolute last resort (straight line)
-            return {
-                path: [
-                    { lat: start.lat, lng: start.lng, z: 50 },
-                    { lat: end.lat,   lng: end.lng,   z: 50 },
-                ],
-                distance: distanceCalculator.calculate2DDistance(start, end),
-                lane: 5,
-                laneAssigned: false,
-                altitude: 50,
-            };
+            logger.error(`[NAV] All routing failed for ${droneId}: ${error.message}`);
         }
+
+        // 4. Absolute last resort (straight line)
+        return {
+            path: [
+                { lat: start.lat, lng: start.lng, z: 50 },
+                { lat: end.lat,   lng: end.lng,   z: 50 },
+            ],
+            distance: distanceCalculator.calculate2DDistance(start, end),
+            lane: 5,
+            laneAssigned: false,
+            altitude: 50,
+        };
     }
 
     releaseMission(laneId, slotIndex, droneId) {

@@ -22,6 +22,7 @@ import collisionRoutes from "./routes/collision.routes.js";
 import navigationRoutes from "./routes/navigation.routes.js";
 import missionRoutes from "./routes/mission.routes.js";
 import collisionService from "./services/collision.service.js";
+import collision3D from "./services/collision3D.js";
 
 
 const app = express();
@@ -67,9 +68,16 @@ app.use("/api/v1/missions", missionRoutes);
 // Global Error Handler
 import ApiError from "./utils/ApiError.js";
 app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || (err instanceof ApiError ? err.statusCode : 500);
-  const message = err.message || "Internal Server Error";
+  let statusCode = err.statusCode || (err instanceof ApiError ? err.statusCode : 500);
+  let message = err.message || "Internal Server Error";
   
+  // Handle MongoDB Duplicate Key Error
+  if (err.code === 11000) {
+    statusCode = 409; // Conflict
+    const field = Object.keys(err.keyValue)[0];
+    message = `Duplicate ${field} detected. Please use a unique value.`;
+  }
+
   logger.error(`[Error] ${statusCode} - ${message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
   
   res.status(statusCode).json({
@@ -83,6 +91,7 @@ app.use((err, req, res, next) => {
 
 connectDB().then(() => {
   collisionService.startMonitoring();
+  collision3D.startMonitoring3D();
 });
 
 app.get("/", (req, res) => {

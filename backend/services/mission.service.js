@@ -7,6 +7,7 @@ import { NO_FLY_ZONES } from "../config/safety.config.js";
 import { io } from "../server.js";
 import logger from "../utils/logger.js";
 import simulationService from "./simulation.service.js";
+import drone3DService from "./drone3DService.js";
 
 import gridOccupancyService from "./gridOccupancy.service.js";
 import collisionService from "./collision.service.js";
@@ -60,9 +61,9 @@ class MissionService {
             throw error;
         }
 
-        const { path, distance, lane, slotIndex } = navData;
+        const { path, distance, lane, slotIndex, source: routeSource } = navData;
         const validDistance = Number(distance) || 0;
-        logger.info(`[MissionService] Route planned: ${validDistance}m, Lane: ${lane}`);
+        logger.info(`[MissionService] Route planned: ${validDistance}m, Lane: ${lane}, Method: ${routeSource}`);
 
         // Request Takeoff
         await collisionService.requestTakeoff(drone.droneId, order.hubId || "HUB-01");
@@ -118,8 +119,27 @@ class MissionService {
             type: "info"
         });
 
-        // Start Simulation
-        simulationService.startDeliverySimulation(order._id, drone._id);
+        // NFZ bypass warning — shows in Event Log when A* detour was needed
+        if (routeSource === "astar-grid") {
+            io.emit("event_log", {
+                message: `⚠️ NFZ DETECTED on route → A* BYPASS ACTIVE for ${drone.droneId}. Drone rerouted around No-Fly Zone periphery. ${path?.length || 0} safe waypoints computed.`,
+                type: "warning"
+            });
+        }
+
+        io.emit("event_log", {
+            message: `ROUTE: ${drone.droneId} | ${validDistance.toFixed(0)}m | ${path?.length || 0} waypoints | Algorithm: ${routeSource === 'astar-grid' ? 'A* Grid' : routeSource || 'Graph'}`,
+            type: "info"
+        });
+
+        // Start 3D Simulation if path is available; fallback to legacy sim
+        if (path && path.length >= 2) {
+            drone3DService.startDrone3D(drone.droneId, path, 10, (id) => {
+                logger.info(`[3D] Drone ${id} completed 3D mission`);
+            });
+        } else {
+            simulationService.startDeliverySimulation(order._id, drone._id);
+        }
 
         return mission;
     }

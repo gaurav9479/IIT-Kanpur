@@ -3,6 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import missionService from "../services/mission.service.js";
 import Mission from "../models/Mission.model.js";
+import navigationService from "../services/navigation.service.js";
 
 import Order from "../models/Order.model.js";
 
@@ -62,3 +63,37 @@ export const getMissionById = asyncHandler(async (req, res, next) => {
     new ApiResponse(200, mission, "Mission fetched successfully")
   );
 });
+
+/**
+ * POST /missions/preview-route
+ * Body: { pickupLocation: {lat,lng}, dropLocation: {lat,lng} }
+ * Returns computed waypoints WITHOUT creating a mission or assigning a drone.
+ * Used by the MissionPlanner map to preview the real graph path.
+ */
+export const previewRoute = asyncHandler(async (req, res) => {
+  const { pickupLocation, dropLocation } = req.body;
+
+  if (!pickupLocation || !dropLocation) {
+    throw new ApiError(400, "pickupLocation and dropLocation are required");
+  }
+
+  const navData = await navigationService.get3DRoute(
+    pickupLocation,
+    dropLocation,
+    { droneId: "PREVIEW" }
+  );
+
+  if (!navData || !navData.path) {
+    throw new ApiError(422, "No valid path found between the selected nodes");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      path: navData.path,
+      distance: navData.distance,
+      source: navData.source || "graph-stitched",
+      waypoints: navData.path.length,
+    }, "Route preview computed successfully")
+  );
+});
+

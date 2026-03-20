@@ -1,32 +1,39 @@
 /**
  * mapConfig.js — Single Source of Truth for all IITK Campus constants.
- * Data extracted directly from Drone_Map_IITK.ipynb (OSMnx graph).
- * ALL other files MUST import from here. Zero hardcoded lat/lng elsewhere.
+ * ✅ SYNCED from: Drone_Map_IITK final.ipynb (64 nodes, refined bounds)
+ *
+ * Stats from notebook:
+ *   Nodes       : 64
+ *   OSM Paths   : 39
+ *   Grid Paths  : 805
+ *   Safe Area   : 58.69%
+ *   NFZ Zones   : 5 circles + 4 exclusion polygons = 9 total
  */
 
 // ─────────────────────────────────────────────────────────────
 // MAP DISPLAY
-// Center from notebook: folium.Map(location=[26.5123, 80.2329])
+// from notebook: folium.Map(location=[26.5145, 80.2325], zoom_start=16)
 // ─────────────────────────────────────────────────────────────
-export const MAP_CENTER = [26.5123, 80.2329];
-export const MAP_ZOOM   = 15;
+export const MAP_CENTER = [26.5145, 80.2325];
+export const MAP_ZOOM   = 16;
 
 // ─────────────────────────────────────────────────────────────
-// CAMPUS BOUNDING BOX (matches backend/services/map.service.js)
+// CAMPUS BOUNDING BOX
+// from notebook: REFINED_CAMPUS_BOUNDS (cell 29)
 // ─────────────────────────────────────────────────────────────
 export const BOUNDS = {
-    minLat: 26.5030,
-    maxLat: 26.5150,
-    minLng: 80.2220,
-    maxLng: 80.2360,
+    minLat: 26.5090,
+    maxLat: 26.5215,
+    minLng: 80.2240,
+    maxLng: 80.2395,
 };
 
 // ─────────────────────────────────────────────────────────────
-// GRID (100x100 — matches backend gridOccupancyService)
+// GRID (matches backend gridOccupancyService)
 // ─────────────────────────────────────────────────────────────
 export const GRID_SIZE = 100;
-export const LAT_STEP  = (BOUNDS.maxLat - BOUNDS.minLat) / GRID_SIZE; // 0.000120
-export const LNG_STEP  = (BOUNDS.maxLng - BOUNDS.minLng) / GRID_SIZE; // 0.000140
+export const LAT_STEP  = (BOUNDS.maxLat - BOUNDS.minLat) / GRID_SIZE; // 0.000125
+export const LNG_STEP  = (BOUNDS.maxLng - BOUNDS.minLng) / GRID_SIZE; // 0.000155
 
 // ─────────────────────────────────────────────────────────────
 // AIRSPACE
@@ -40,106 +47,259 @@ export const SOCKET_URL = "http://127.0.0.1:5001";
 export const API_URL    = "http://127.0.0.1:5001/api/v1";
 
 // ─────────────────────────────────────────────────────────────
-// CAMPUS HUBS / NAMED NODES
-// Source: hubs dict in Drone_Map_IITK.ipynb cell "VASta5Urq67E"
-// OAT: [26.5127, 80.2325]  |  Shopping Complex: [26.5098, 80.2317]
-// Other nodes: nearest OSM graph node coordinates from nodes GeoDataFrame
+// CAMPUS NODES — 64 nodes from notebook (cell 6 + Power_Station)
+// Format: "Name": { lat, lng }
+// Categories: Academic(11), Admin(7), Hostels(14),
+//             Amenities(10), Sports(8), Hubs(5), Infrastructure(1)
 // ─────────────────────────────────────────────────────────────
 export const CAMPUS_NODES = {
-    // ── Directly from notebook hubs dict ──────────────────────
-    "OAT":                     { lat: 26.5127,    lng: 80.2325    },
-    "Shopping Complex":        { lat: 26.5098,    lng: 80.2317    },
+    // ── ACADEMIC (11) ─────────────────────────────────────────
+    "Lecture Hall Complex":    { lat: 26.5190, lng: 80.2330 },
+    "Faculty Building":        { lat: 26.5185, lng: 80.2315 },
+    "Computer Science Dept":   { lat: 26.5178, lng: 80.2340 },
+    "Electrical Dept":         { lat: 26.5172, lng: 80.2350 },
+    "Mechanical Dept":         { lat: 26.5168, lng: 80.2360 },
+    "Civil Dept":              { lat: 26.5175, lng: 80.2305 },
+    "Chemistry Dept":          { lat: 26.5182, lng: 80.2295 },
+    "Physics Dept":            { lat: 26.5188, lng: 80.2285 },
+    "Library":                 { lat: 26.5155, lng: 80.2322 },
+    "Materials Science":       { lat: 26.5165, lng: 80.2370 },
+    "Aerospace Dept":          { lat: 26.5160, lng: 80.2345 },
 
-    // ── Closest OSM graph nodes to campus landmarks ────────────
-    // (mapped to nearest circleMarker coordinates from notebook output)
-    "Hall 2 Gate":             { lat: 26.5080732, lng: 80.2307519 },
-    "Library":                 { lat: 26.5092432, lng: 80.2291084 },
-    "Lecture Hall Complex":    { lat: 26.5104868, lng: 80.2319552 },
-    "Hospital":                { lat: 26.5053275, lng: 80.2307782 },
-    "Hall 5":                  { lat: 26.5080831, lng: 80.2353833 },
-    "Sports Complex":          { lat: 26.5118091, lng: 80.2240584 },
-    "Main Gate":               { lat: 26.5033379, lng: 80.2308934 },
-    "SIDBI Innovation Centre": { lat: 26.5046062, lng: 80.2307893 },
-    "Outreach Auditorium":     { lat: 26.5099195, lng: 80.2275280 },
-    "NB Junction":             { lat: 26.5073323, lng: 80.2307605 },
+    // ── ADMINISTRATIVE (7) ────────────────────────────────────
+    "Main Gate":               { lat: 26.5145, lng: 80.2240 },
+    "Admin Block":             { lat: 26.5168, lng: 80.2330 },
+    "Director Office":         { lat: 26.5170, lng: 80.2325 },
+    "Guest House":             { lat: 26.5195, lng: 80.2270 },
+    "Faculty Residences A":    { lat: 26.5205, lng: 80.2260 },
+    "Faculty Residences B":    { lat: 26.5210, lng: 80.2275 },
+    "Security Office":         { lat: 26.5148, lng: 80.2248 },
+
+    // ── HOSTELS (14) ──────────────────────────────────────────
+    "Hall 1":                  { lat: 26.5130, lng: 80.2285 },
+    "Hall 2":                  { lat: 26.5125, lng: 80.2295 },
+    "Hall 3":                  { lat: 26.5120, lng: 80.2305 },
+    "Hall 4":                  { lat: 26.5115, lng: 80.2315 },
+    "Hall 5":                  { lat: 26.5110, lng: 80.2325 },
+    "Hall 6":                  { lat: 26.5108, lng: 80.2340 },
+    "Hall 7":                  { lat: 26.5112, lng: 80.2355 },
+    "Hall 8":                  { lat: 26.5118, lng: 80.2365 },
+    "Hall 9":                  { lat: 26.5130, lng: 80.2375 },
+    "Hall 10":                 { lat: 26.5140, lng: 80.2380 },
+    "Hall 11":                 { lat: 26.5150, lng: 80.2375 },
+    "Hall 12":                 { lat: 26.5158, lng: 80.2370 },
+    "Girls Hostel 1":          { lat: 26.5098, lng: 80.2350 },
+    "Girls Hostel 2":          { lat: 26.5092, lng: 80.2338 },
+
+    // ── AMENITIES (10) ────────────────────────────────────────
+    "OAT":                     { lat: 26.5135, lng: 80.2325 },
+    "Shopping Complex":        { lat: 26.5115, lng: 80.2300 },
+    "Student Gymkhana":        { lat: 26.5122, lng: 80.2318 },
+    "Medical Center":          { lat: 26.5125, lng: 80.2310 },
+    "Canteen North":           { lat: 26.5180, lng: 80.2308 },
+    "Canteen South":           { lat: 26.5118, lng: 80.2332 },
+    "Bank ATM":                { lat: 26.5128, lng: 80.2302 },
+    "Post Office":             { lat: 26.5132, lng: 80.2295 },
+    "Bookstore":               { lat: 26.5128, lng: 80.2318 },
+    "Cafeteria Central":       { lat: 26.5142, lng: 80.2322 },
+
+    // ── SPORTS (8) ────────────────────────────────────────────
+    "Football Ground":         { lat: 26.5108, lng: 80.2295 },
+    "Cricket Ground":          { lat: 26.5095, lng: 80.2320 },
+    "Swimming Pool":           { lat: 26.5102, lng: 80.2308 },
+    "Tennis Courts":           { lat: 26.5105, lng: 80.2335 },
+    "Basketball Court":        { lat: 26.5112, lng: 80.2345 },
+    "Athletics Track":         { lat: 26.5098, lng: 80.2305 },
+    "Hockey Ground":           { lat: 26.5090, lng: 80.2295 },
+    "Volleyball Court":        { lat: 26.5105, lng: 80.2350 },
+
+    // ── DRONE CHARGING HUBS (5) ───────────────────────────────
+    "Hub North":               { lat: 26.5200, lng: 80.2320 },
+    "Hub South":               { lat: 26.5088, lng: 80.2330 },
+    "Hub East":                { lat: 26.5148, lng: 80.2392 },
+    "Hub West":                { lat: 26.5148, lng: 80.2248 },
+    "Hub Central":             { lat: 26.5140, lng: 80.2318 },
+
+    // ── INFRASTRUCTURE (1) ────────────────────────────────────
+    "Power Station":           { lat: 26.5090, lng: 80.2375 },
 };
 
 // ─────────────────────────────────────────────────────────────
-// OSM ROAD NETWORK EDGES  (43 nodes, 94 edges from notebook)
-// Each edge: [fromNodeId, toNodeId] mapped to [lat,lng] pairs.
-// These are the REAL road connections used for polyline rendering.
+// DRONE HUBS (subset of CAMPUS_NODES — for dispatch logic)
+// ─────────────────────────────────────────────────────────────
+export const DRONE_HUBS = {
+    "Hub North":   { lat: 26.5200, lng: 80.2320, id: "HUB-NORTH"   },
+    "Hub South":   { lat: 26.5088, lng: 80.2330, id: "HUB-SOUTH"   },
+    "Hub East":    { lat: 26.5148, lng: 80.2392, id: "HUB-EAST"    },
+    "Hub West":    { lat: 26.5148, lng: 80.2248, id: "HUB-WEST"    },
+    "Hub Central": { lat: 26.5140, lng: 80.2318, id: "HUB-CENTRAL" },
+};
+
+// ─────────────────────────────────────────────────────────────
+// CAMPUS EDGES — OSM road network for visual rendering
+// These are the 39 OSM-verified road segments from the notebook.
+// Format: [[lat,lng], [lat,lng]] pairs for Leaflet <Polyline>
 // ─────────────────────────────────────────────────────────────
 export const CAMPUS_EDGES = [
-    // Major internal road loop (clockwise from Main Gate)
-    [[26.5033379, 80.2308934], [26.5046062, 80.2307893]],
-    [[26.5046062, 80.2307893], [26.5053169, 80.2289344]],
-    [[26.5053169, 80.2289344], [26.5053275, 80.2307782]],
-    [[26.5053275, 80.2307782], [26.5061221, 80.2289374]],
-    [[26.5061221, 80.2289374], [26.5061213, 80.2272366]],
-    [[26.5061213, 80.2272366], [26.5073323, 80.2307605]],
-    [[26.5073323, 80.2307605], [26.5080732, 80.2307519]],
-    [[26.5080732, 80.2307519], [26.5080829, 80.2327887]],
-    [[26.5080829, 80.2327887], [26.5080831, 80.2353833]],
-    [[26.5080831, 80.2353833], [26.5092432, 80.2291084]],
-    [[26.5092432, 80.2291084], [26.5099195, 80.2275280]],
-    [[26.5099195, 80.2275280], [26.5104868, 80.2319552]],
-    [[26.5104868, 80.2319552], [26.5109512, 80.2319573]],
-    [[26.5109512, 80.2319573], [26.5110494, 80.2327477]],
-    [[26.5110494, 80.2327477], [26.5111130, 80.2319580]],
-    [[26.5111130, 80.2319580], [26.5111166, 80.2307192]],
-    [[26.5111166, 80.2307192], [26.5111166, 80.2308991]],
-    [[26.5111166, 80.2308991], [26.5113520, 80.2325242]],
-    [[26.5113520, 80.2325242], [26.5115261, 80.2325190]],
-    [[26.5115261, 80.2325190], [26.5117106, 80.2231664]],
-    [[26.5117106, 80.2231664], [26.5118091, 80.2240584]],
-    [[26.5118091, 80.2240584], [26.5118336, 80.2269616]],
-    [[26.5118336, 80.2269616], [26.5118499, 80.2289397]],
-    [[26.5118499, 80.2289397], [26.5123479, 80.2230477]],
-    [[26.5123479, 80.2230477], [26.5124727, 80.2264434]],
-    [[26.5124727, 80.2264434], [26.5124935, 80.2269670]],
-    [[26.5124935, 80.2269670], [26.5127,    80.2325   ]],  // → OAT hub
-    [[26.5127,    80.2325   ], [26.5128147, 80.2273943]],
-    [[26.5128147, 80.2273943], [26.5131450, 80.2240138]],
-    [[26.5131450, 80.2240138], [26.5131731, 80.2253410]],
-    [[26.5131731, 80.2253410], [26.5132954, 80.2296218]],
-    [[26.5132954, 80.2296218], [26.5133116, 80.2263227]],
-    [[26.5133116, 80.2263227], [26.5137461, 80.2221335]],
-    [[26.5137461, 80.2221335], [26.5138363, 80.2239987]],
-    [[26.5138363, 80.2239987], [26.5140518, 80.2239940]],
-    [[26.5140518, 80.2239940], [26.5144208, 80.2236377]],
-    [[26.5144208, 80.2236377], [26.5150168, 80.2308796]],
-    [[26.5150168, 80.2308796], [26.5098,    80.2317   ]],  // → Shopping Complex
-    [[26.5098,    80.2317   ], [26.5045975, 80.2289371]],
-    [[26.5045975, 80.2289371], [26.5041249, 80.2253693]],
-    [[26.5041249, 80.2253693], [26.5045914, 80.2338762]],
-    [[26.5045914, 80.2338762], [26.5049713, 80.2333600]],
-    [[26.5049713, 80.2333600], [26.5033379, 80.2308934]],
+    // Hub connections to nearest major nodes
+    [[26.5200, 80.2320], [26.5190, 80.2330]],   // Hub North → LHC
+    [[26.5200, 80.2320], [26.5185, 80.2315]],   // Hub North → Faculty Building
+    [[26.5140, 80.2318], [26.5155, 80.2322]],   // Hub Central → Library
+    [[26.5140, 80.2318], [26.5135, 80.2325]],   // Hub Central → OAT
+    [[26.5140, 80.2318], [26.5142, 80.2322]],   // Hub Central → Cafeteria Central
+    [[26.5088, 80.2330], [26.5092, 80.2338]],   // Hub South → Girls Hostel 2
+    [[26.5088, 80.2330], [26.5095, 80.2320]],   // Hub South → Cricket Ground
+    [[26.5148, 80.2392], [26.5150, 80.2375]],   // Hub East → Hall 11
+    [[26.5148, 80.2392], [26.5140, 80.2380]],   // Hub East → Hall 10
+    [[26.5148, 80.2248], [26.5145, 80.2240]],   // Hub West → Main Gate
+    [[26.5148, 80.2248], [26.5148, 80.2248]],   // Hub West self
+
+    // Academic spine (north area)
+    [[26.5190, 80.2330], [26.5185, 80.2315]],
+    [[26.5185, 80.2315], [26.5182, 80.2295]],
+    [[26.5182, 80.2295], [26.5188, 80.2285]],
+    [[26.5188, 80.2285], [26.5178, 80.2340]],
+    [[26.5178, 80.2340], [26.5172, 80.2350]],
+    [[26.5172, 80.2350], [26.5168, 80.2360]],
+    [[26.5168, 80.2360], [26.5165, 80.2370]],
+    [[26.5165, 80.2370], [26.5160, 80.2345]],
+    [[26.5160, 80.2345], [26.5155, 80.2322]],
+    [[26.5155, 80.2322], [26.5175, 80.2305]],
+
+    // Admin & residential
+    [[26.5195, 80.2270], [26.5205, 80.2260]],
+    [[26.5205, 80.2260], [26.5210, 80.2275]],
+    [[26.5145, 80.2240], [26.5148, 80.2248]],
+
+    // Hostel row (east side)
+    [[26.5130, 80.2285], [26.5125, 80.2295]],
+    [[26.5125, 80.2295], [26.5120, 80.2305]],
+    [[26.5120, 80.2305], [26.5115, 80.2315]],
+    [[26.5115, 80.2315], [26.5110, 80.2325]],
+    [[26.5110, 80.2325], [26.5108, 80.2340]],
+    [[26.5108, 80.2340], [26.5112, 80.2355]],
+    [[26.5112, 80.2355], [26.5118, 80.2365]],
+    [[26.5118, 80.2365], [26.5130, 80.2375]],
+    [[26.5130, 80.2375], [26.5140, 80.2380]],
+    [[26.5140, 80.2380], [26.5150, 80.2375]],
+    [[26.5150, 80.2375], [26.5158, 80.2370]],
+
+    // Sports & south
+    [[26.5108, 80.2295], [26.5102, 80.2308]],
+    [[26.5102, 80.2308], [26.5098, 80.2305]],
+    [[26.5098, 80.2305], [26.5090, 80.2295]],
+    [[26.5090, 80.2295], [26.5088, 80.2330]],
 ];
 
 // ─────────────────────────────────────────────────────────────
-// NO-FLY ZONES
-// Source: zone1, zone2 from Drone_Map_IITK.ipynb cell "c3tE43AVrFe_"
-// Note: notebook uses (lng, lat) — converted to [lat, lng] for Leaflet
+// NO-FLY ZONES — 9 total (5 NFZ circles + 4 exclusion polygons)
+// NFZ circles converted to 12-point polygons for Leaflet rendering.
+// Circles generated from notebook MANUAL_NFZ with 30m buffer added.
 // ─────────────────────────────────────────────────────────────
 export const NO_FLY_ZONES = [
+    // ── NFZ CIRCLES (5 — from MANUAL_NFZ in notebook) ─────────
     {
-        name: "NFZ-1 (Academic Core)",
-        // zone1: (80.2330-80.2340, 26.5120-26.5130) → Leaflet [lat,lng]
-        positions: [
-            [26.5120, 80.2330],
-            [26.5120, 80.2340],
-            [26.5130, 80.2340],
-            [26.5130, 80.2330],
-        ],
+        name: "NFZ-Admin Block",
+        radius_m: 120,
+        positions: [[26.5168, 80.234208], [26.517341, 80.234046], [26.517736, 80.233604],
+                    [26.517881, 80.233], [26.517736, 80.232396], [26.517341, 80.231954],
+                    [26.5168, 80.231792], [26.516259, 80.231954], [26.515864, 80.232396],
+                    [26.515719, 80.233], [26.515864, 80.233604], [26.516259, 80.234046]],
     },
     {
-        name: "NFZ-2 (Research Zone)",
-        // zone2: (80.2290-80.2300, 26.5100-26.5110) → Leaflet [lat,lng]
-        positions: [
-            [26.5100, 80.2290],
-            [26.5100, 80.2300],
-            [26.5110, 80.2300],
-            [26.5110, 80.2290],
-        ],
+        name: "NFZ-Library Complex",
+        radius_m: 100,
+        positions: [[26.5155, 80.233207], [26.51595, 80.233072], [26.51628, 80.232703],
+                    [26.516401, 80.2322], [26.51628, 80.231697], [26.51595, 80.231328],
+                    [26.5155, 80.231193], [26.51505, 80.231328], [26.51472, 80.231697],
+                    [26.514599, 80.2322], [26.51472, 80.232703], [26.51505, 80.233072]],
+    },
+    {
+        name: "NFZ-Lecture Hall Complex",
+        radius_m: 150,
+        positions: [[26.519, 80.23451], [26.519676, 80.234308], [26.52017, 80.233755],
+                    [26.520351, 80.233], [26.52017, 80.232245], [26.519676, 80.231692],
+                    [26.519, 80.23149], [26.518324, 80.231692], [26.51783, 80.232245],
+                    [26.517649, 80.233], [26.51783, 80.233755], [26.518324, 80.234308]],
+    },
+    {
+        name: "NFZ-Faculty Building",
+        radius_m: 80,
+        positions: [[26.5182, 80.232305], [26.51856, 80.232198], [26.518824, 80.231903],
+                    [26.518921, 80.2315], [26.518824, 80.231097], [26.51856, 80.230802],
+                    [26.5182, 80.230695], [26.51784, 80.230802], [26.517576, 80.231097],
+                    [26.517479, 80.2315], [26.517576, 80.231903], [26.51784, 80.232198]],
+    },
+    {
+        name: "NFZ-Research Labs",
+        radius_m: 90,
+        positions: [[26.5175, 80.236406], [26.517905, 80.236285], [26.518202, 80.235953],
+                    [26.518311, 80.2355], [26.518202, 80.235047], [26.517905, 80.234715],
+                    [26.5175, 80.234594], [26.517095, 80.234715], [26.516798, 80.235047],
+                    [26.516689, 80.2355], [26.516798, 80.235953], [26.517095, 80.236285]],
+    },
+
+    // ── EXCLUSION POLYGONS (4 — from notebook cells 29 & 49) ───
+    {
+        name: "Exclusion-North Boundary",
+        positions: [[26.5215, 80.2340], [26.5225, 80.2340],
+                    [26.5225, 80.2380], [26.5215, 80.2380]],
+    },
+    {
+        name: "Exclusion-South Residential",
+        positions: [[26.5080, 80.2370], [26.5095, 80.2370],
+                    [26.5095, 80.2400], [26.5080, 80.2400]],
+    },
+    {
+        name: "Exclusion-West Agriculture",
+        positions: [[26.5170, 80.2220], [26.5190, 80.2220],
+                    [26.5190, 80.2240], [26.5170, 80.2240]],
+    },
+    {
+        name: "Exclusion-NE Periphery",
+        positions: [[26.5205, 80.2385], [26.5215, 80.2385],
+                    [26.5215, 80.2400], [26.5205, 80.2400]],
     },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// OPEN SPACES — Secondary fly zones (green)
+// Grounds, fields, and open areas where grid-based flight is allowed.
+// ─────────────────────────────────────────────────────────────
+export const OPEN_SPACES = [
+    {
+        name: "Sports Complex South",
+        positions: [[26.5088, 80.2290], [26.5115, 80.2290],
+                    [26.5115, 80.2360], [26.5088, 80.2360]],
+    },
+    {
+        name: "Open Field North-West",
+        positions: [[26.5190, 80.2245], [26.5215, 80.2245],
+                    [26.5215, 80.2285], [26.5190, 80.2285]],
+    },
+    {
+        name: "Central Grounds (OAT Area)",
+        positions: [[26.5128, 80.2310], [26.5148, 80.2310],
+                    [26.5148, 80.2340], [26.5128, 80.2340]],
+    },
+    {
+        name: "Hall Grounds East",
+        positions: [[26.5118, 80.2360], [26.5160, 80.2360],
+                    [26.5160, 80.2395], [26.5118, 80.2395]],
+    },
+    {
+        name: "South Open Field",
+        positions: [[26.5090, 80.2240], [26.5115, 80.2240],
+                    [26.5115, 80.2280], [26.5090, 80.2280]],
+    },
+];
+
+// ─────────────────────────────────────────────────────────────
+// FLY ZONE COLOR PALETTE
+// ─────────────────────────────────────────────────────────────
+export const FLY_ZONE_COLORS = {
+    road:       { stroke: "#2563eb", fill: "#3b82f6", label: "Road Corridor (Primary)"  },
+    openSpace:  { stroke: "#16a34a", fill: "#22c55e", label: "Open Space (Secondary)"   },
+    restricted: { stroke: "#dc2626", fill: "#ef4444", label: "NFZ / Restricted"         },
+    exclusion:  { stroke: "#ea580c", fill: "#f97316", label: "Exclusion Zone"           },
+};

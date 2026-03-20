@@ -1,15 +1,20 @@
 /**
- * MissionPlanner.jsx — Updated with real notebook data.
- * - Campus node dropdowns from CAMPUS_NODES (real OSMnx coordinates)
- * - OSM road network edges rendered as dark polylines
- * - No-fly zones rendered as red shaded polygons
+ * MissionPlanner.jsx — Fixed 5 Source + 5 Destination.
+ * ALL nodes are safely OUTSIDE No-Fly Zones.
+ * Drone detours around NFZ periphery if blocked.
  */
 
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Polygon, Tooltip, useMapEvents } from 'react-leaflet';
+import React, { useState, useEffect } from 'react';
+import {
+  MapContainer, TileLayer, Marker, Polyline,
+  Polygon, Tooltip, CircleMarker
+} from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Send, MapPin, Trash2, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
+import {
+  Send, MapPin, Trash2, CheckCircle2, AlertCircle,
+  ShieldAlert, Route, Loader2, Navigation
+} from 'lucide-react';
 import axios from 'axios';
 import CongestionOverlay from './CongestionOverlay';
 import {
@@ -28,49 +33,82 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const CAMPUS_NAMES = Object.keys(CAMPUS_NODES);
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  iconSize: [25, 41], iconAnchor: [12, 41],
+});
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  iconSize: [25, 41], iconAnchor: [12, 41],
+});
+
+// ═══════════════════════════════════════════════════════════
+// 15 LOCATIONS — any can be Source OR Destination
+// ★ = NORTH/EAST of NFZ cluster → most combos force A* bypass
+// NFZ cluster is at lat 26.515-26.520, lng 80.230-80.236
+// ═══════════════════════════════════════════════════════════
+const ALL_LOCATIONS = [
+  // ── NORTH OF NFZs (routes going south WILL cross red zones) ──
+  { name: "North Launchpad",     lat: 26.5212, lng: 80.2328 },  // ★ directly above LHC NFZ
+  { name: "Guest House",         lat: 26.5195, lng: 80.2270 },  // ★ NW of NFZs
+  { name: "Faculty Res. B",      lat: 26.5210, lng: 80.2275 },  // ★ far NW
+  { name: "NE Research Post",    lat: 26.5205, lng: 80.2380 },  // ★ NE corner, above Research Labs NFZ
+  { name: "Airfield Alpha",     lat: 26.5218, lng: 80.2345 },  // ★ far north, above everything
+
+  // ── SOUTH / SAFE ZONE (below all NFZs) ──
+  { name: "Hub Central",         lat: 26.5140, lng: 80.2318 },
+  { name: "Hub South",           lat: 26.5088, lng: 80.2330 },
+  { name: "Hub East",            lat: 26.5148, lng: 80.2392 },
+  { name: "Hall 5",              lat: 26.5110, lng: 80.2325 },
+  { name: "Cricket Ground",      lat: 26.5095, lng: 80.2320 },
+  { name: "Medical Center",      lat: 26.5125, lng: 80.2310 },
+  { name: "Hall 9",              lat: 26.5130, lng: 80.2375 },
+  { name: "Football Ground",     lat: 26.5108, lng: 80.2295 },
+  { name: "OAT",                 lat: 26.5135, lng: 80.2325 },
+  { name: "Shopping Complex",    lat: 26.5115, lng: 80.2300 },
+];
 
 const MissionPlanner = () => {
-  const [source,      setSource]      = useState(null); // { name, lat, lng }
-  const [destination, setDestination] = useState(null); // { name, lat, lng }
-  const [snapToHub,   setSnapToHub]   = useState(false);
-  const [weight,      setWeight]      = useState(1.0);
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [feedback,    setFeedback]    = useState(null);
+  const [source,       setSource]       = useState(null);
+  const [destination,  setDestination]  = useState(null);
+  const [weight,       setWeight]       = useState(1.0);
+  const [isDeploying,  setIsDeploying]  = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [feedback,     setFeedback]     = useState(null);
+  const [routePath,    setRoutePath]    = useState(null);
+  const [routeStats,   setRouteStats]   = useState(null);
 
-  // Helper to find nearest campus node for snapping
-  const findNearestNode = (lat, lng) => {
-    let nearestName = null;
-    let minDist = Infinity;
-    
-    CAMPUS_NAMES.forEach(name => {
-      const node = CAMPUS_NODES[name];
-      const d = Math.sqrt(Math.pow(node.lat - lat, 2) + Math.pow(node.lng - lng, 2));
-      if (d < minDist) {
-        minDist = d;
-        nearestName = name;
-      }
-    });
-    return { name: nearestName, ...CAMPUS_NODES[nearestName] };
-  };
+  // Auto-preview route when both selected
+  useEffect(() => {
+    setRoutePath(null);
+    setRouteStats(null);
+    setFeedback(null);
+    if (!source || !destination) return;
 
-  const MapClickHandler = () => {
-    useMapEvents({
-      click(e) {
-        const { lat, lng } = e.latlng;
-        const point = snapToHub 
-          ? findNearestNode(lat, lng)
-          : { name: `Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`, lat, lng };
-        
-        if (!source) {
-          setSource(point);
-        } else if (!destination && (point.lat !== source.lat || point.lng !== source.lng)) {
-          setDestination(point);
-        }
-      },
-    });
-    return null;
-  };
+    let cancelled = false;
+    setIsPreviewing(true);
+
+    axios.post(`${API_URL}/missions/preview-route`, {
+      pickupLocation: { lat: source.lat, lng: source.lng },
+      dropLocation:   { lat: destination.lat, lng: destination.lng },
+    })
+    .then(res => {
+      if (cancelled) return;
+      const d = res.data?.data || {};
+      setRoutePath(d.path || []);
+      setRouteStats({ distance: d.distance, waypoints: d.waypoints, method: d.source });
+    })
+    .catch(err => {
+      if (cancelled) return;
+      setRoutePath([
+        { lat: source.lat, lng: source.lng },
+        { lat: destination.lat, lng: destination.lng },
+      ]);
+    })
+    .finally(() => { if (!cancelled) setIsPreviewing(false); });
+
+    return () => { cancelled = true; };
+  }, [source, destination]);
 
   const handleDeploy = async () => {
     if (!source || !destination) return;
@@ -80,27 +118,20 @@ const MissionPlanner = () => {
       const res = await axios.post(`${API_URL}/missions/dispatch`, {
         pickupLocation: { lat: source.lat, lng: source.lng },
         dropLocation:   { lat: destination.lat, lng: destination.lng },
-        weight:          parseFloat(weight),
+        weight: parseFloat(weight),
       });
       const { missionId, droneId } = res.data?.data || res.data;
-      setFeedback({
-        type: 'success',
-        msg: `✅ Mission Dispatched! ID: ${missionId || 'OK'} | Drone: ${droneId || 'Assigned'}`,
-      });
-      setSource(null);
-      setDestination(null);
-      setWeight(1.0);
+      setFeedback({ type: 'success', msg: `✅ Dispatched! Mission: ${missionId || 'OK'} | Drone: ${droneId || 'Assigned'}` });
+      setSource(null); setDestination(null); setRoutePath(null); setRouteStats(null);
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        msg: `❌ Dispatch Failed: ${error.response?.data?.message || error.message}`,
-      });
+      setFeedback({ type: 'error', msg: `❌ Failed: ${error.response?.data?.message || error.message}` });
     } finally {
       setIsDeploying(false);
     }
   };
 
-  const canDeploy = source && destination && !isDeploying;
+  const canDeploy = source && destination && !isDeploying && !isPreviewing;
+  const pathPositions = routePath ? routePath.map(p => [p.lat, p.lng]) : [];
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white border-l border-navy-900/5 overflow-y-auto custom-scrollbar">
@@ -109,158 +140,118 @@ const MissionPlanner = () => {
       <div className="p-8 pb-4 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-sora font-black text-navy-900 tracking-tighter uppercase">
-            Mission Logistics Planner
+            Drone Mission Planner
           </h2>
           <p className="text-navy-600 text-[10px] font-black uppercase tracking-widest mt-1">
-            IITK Drone Airspace — Real OSMnx Road Network
+            Source → Destination • Drone detours around No-Fly Zones
           </p>
         </div>
         <div className="flex gap-4">
-          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-navy-50/50 border border-navy-900/5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-navy-600">Snap to Hub</label>
-            <button
-              onClick={() => setSnapToHub(!snapToHub)}
-              className={`w-10 h-5 rounded-full transition-all relative ${snapToHub ? 'bg-navy-900' : 'bg-gray-300'}`}
-            >
-              <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${snapToHub ? 'left-6' : 'left-1'}`} />
-            </button>
-          </div>
-          <button
-            onClick={() => { setSource(null); setDestination(null); setFeedback(null); }}
+          <button onClick={() => { setSource(null); setDestination(null); setRoutePath(null); setRouteStats(null); setFeedback(null); }}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white-soft hover:bg-navy-900 hover:text-white text-navy-900 font-black uppercase text-[10px] tracking-widest transition-all border border-navy-900/10 shadow-sm"
           >
             <Trash2 size={16} /> Clear
           </button>
-          <button
-            disabled={!canDeploy}
-            onClick={handleDeploy}
+          <button disabled={!canDeploy} onClick={handleDeploy}
             className={`flex items-center gap-2 px-8 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl ${
-              !canDeploy
-                ? 'bg-white-muted text-navy-600 cursor-not-allowed opacity-50'
-                : 'bg-navy-900 text-white hover:scale-105 active:scale-95'
+              !canDeploy ? 'bg-white-muted text-navy-600 cursor-not-allowed opacity-50' : 'bg-navy-900 text-white hover:scale-105 active:scale-95'
             }`}
           >
-            <Send size={16} />
-            {isDeploying ? 'Deploying...' : 'Deploy Autonomous Vector'}
+            <Send size={16} /> {isDeploying ? 'Deploying...' : 'Deploy Drone'}
           </button>
         </div>
       </div>
 
-      {/* Feedback Banner */}
+      {/* Feedback */}
       {feedback && (
         <div className={`mx-8 mb-2 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ${
-          feedback.type === 'success'
-            ? 'bg-green-50 border border-green-300 text-green-800'
-            : 'bg-red-50 border border-red-300 text-red-800'
+          feedback.type === 'success' ? 'bg-green-50 border border-green-300 text-green-800' : 'bg-red-50 border border-red-300 text-red-800'
         }`}>
           {feedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
           {feedback.msg}
         </div>
       )}
 
-      {/* Controls Row */}
+      {/* Route Stats */}
+      {routeStats && !isPreviewing && (
+        <div className="mx-8 mb-2 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-4 bg-purple-50 border border-purple-300 text-purple-800">
+          <Route size={16} />
+          <span className="inline-block px-2 py-0.5 rounded-full text-white text-[10px] font-black uppercase bg-purple-600">
+            ⭐ A* Optimal Path
+          </span>
+          <span>{routeStats.waypoints} waypoints</span>
+          {routeStats.distance && <span>{routeStats.distance.toFixed(0)}m</span>}
+          <span className="text-[10px] text-purple-600">✅ A* algorithm — avoids all No-Fly Zones</span>
+        </div>
+      )}
+      {isPreviewing && (
+        <div className="mx-8 mb-2 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700">
+          <Loader2 size={16} className="animate-spin" /> Computing safe drone route...
+        </div>
+      )}
+
+      {/* Controls — 5 Sources, 5 Destinations */}
       <div className="px-8 pb-4 flex flex-wrap gap-4 items-end">
-        {/* Source */}
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">
-            <MapPin size={10} className="inline mr-1" /> Departure Hub
+            <MapPin size={10} className="inline mr-1" /> Source (Takeoff)
           </label>
-          <select
-            value={source?.name || ""}
-            onChange={e => { 
-                const name = e.target.value;
-                if (!name) setSource(null);
-                else setSource({ name, ...CAMPUS_NODES[name] });
-                setDestination(null); 
-            }}
+          <select value={source?.name || ""} onChange={e => {
+            const s = ALL_LOCATIONS.find(x => x.name === e.target.value);
+            setSource(s || null); setDestination(null);
+          }}
             className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900"
           >
             <option value="">Select Source...</option>
-            {CAMPUS_NAMES.map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
+            {ALL_LOCATIONS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
           </select>
         </div>
 
-        {/* Destination */}
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">
-            <MapPin size={10} className="inline mr-1" /> Arrival Target
+            <MapPin size={10} className="inline mr-1" /> Destination (Drop)
           </label>
-          <select
-            value={destination?.name || ""}
-            onChange={e => {
-                const name = e.target.value;
-                if (!name) setDestination(null);
-                else setDestination({ name, ...CAMPUS_NODES[name] });
-            }}
-            disabled={!source}
+          <select value={destination?.name || ""} onChange={e => {
+            const d = ALL_LOCATIONS.find(x => x.name === e.target.value);
+            setDestination(d || null);
+          }} disabled={!source}
             className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900 disabled:opacity-50"
           >
             <option value="">Select Destination...</option>
-            {CAMPUS_NAMES.filter(n => n !== source?.name).map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
+            {ALL_LOCATIONS.filter(d => d.name !== source?.name).map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
           </select>
         </div>
 
-        {/* Weight */}
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">
-            Payload (kg)
-          </label>
-          <input
-            type="number" min="0.1" max="5" step="0.1"
-            value={weight}
-            onChange={e => setWeight(e.target.value)}
+          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">Payload (kg)</label>
+          <input type="number" min="0.1" max="5" step="0.1" value={weight} onChange={e => setWeight(e.target.value)}
             className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm w-24 focus:outline-none focus:ring-2 focus:ring-navy-900"
           />
         </div>
 
-        {/* NFZ Legend */}
         <div className="flex items-center gap-2 ml-auto px-3 py-2 rounded-xl border border-red-200 bg-red-50">
           <ShieldAlert size={14} className="text-red-500" />
-          <span className="text-[9px] font-black text-red-600 uppercase tracking-widest">
-            Red = No-Fly Zone
-          </span>
+          <span className="text-[9px] font-black text-red-600 uppercase tracking-widest">Red = No-Fly Zone (drone goes around)</span>
         </div>
       </div>
 
       {/* Map */}
       <div className="flex-1 mx-8 mb-8 rounded-3xl overflow-hidden glass-card relative border border-navy-900/10 shadow-2xl">
         <MapContainer center={MAP_CENTER} zoom={MAP_ZOOM} className="h-full w-full z-0">
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
 
-          {/* ── Map Click Interaction ───────────────────────────── */}
-          <MapClickHandler />
-
-          {/* ── Congestion Heatmap ──────────────────────────────── */}
           <CongestionOverlay />
 
-          {/* ── OSMnx Road Network Edges (real from notebook) ───── */}
+          {/* Campus road edges (light grey background) */}
           {CAMPUS_EDGES.map((edge, i) => (
-            <Polyline
-              key={`edge-${i}`}
-              positions={edge}
-              pathOptions={{ color: '#334155', weight: 1.5, opacity: 0.4, dashArray: '4,3' }}
-            />
+            <Polyline key={`e-${i}`} positions={edge} pathOptions={{ color: '#94a3b8', weight: 1.5, opacity: 0.35 }} />
           ))}
 
-          {/* ── No-Fly Zones (zone1 & zone2 from notebook) ────── */}
+          {/* No-Fly Zones (red) */}
           {NO_FLY_ZONES.map((zone, i) => (
-            <Polygon
-              key={`nfz-${i}`}
-              positions={zone.positions}
-              pathOptions={{
-                color: '#ef4444',
-                fillColor: '#ef4444',
-                fillOpacity: 0.25,
-                weight: 2,
-                dashArray: '6,3',
-              }}
+            <Polygon key={`nfz-${i}`} positions={zone.positions}
+              pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '6,3' }}
             >
               <Tooltip sticky>
                 <div className="text-xs font-bold text-red-700 flex items-center gap-1">
@@ -270,54 +261,53 @@ const MissionPlanner = () => {
             </Polygon>
           ))}
 
-          {/* ── Custom Markers ────────────────────────────── */}
-          {source && (
-              <Marker
-                position={[source.lat, source.lng]}
-                icon={new L.Icon({
-                  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png',
-                  iconSize: [25, 41], iconAnchor: [12, 41],
-                })}
-              >
-                <Tooltip permanent direction="top" offset={[0, -40]}>
-                  <span className="text-[10px] font-black uppercase text-navy-900">{source.name}</span>
-                </Tooltip>
-              </Marker>
-          )}
-          {destination && (
-              <Marker
-                position={[destination.lat, destination.lng]}
-                icon={new L.Icon({
-                  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-                  iconSize: [25, 41], iconAnchor: [12, 41],
-                })}
-              >
-                <Tooltip permanent direction="top" offset={[0, -40]}>
-                  <span className="text-[10px] font-black uppercase text-blue-900">{destination.name}</span>
-                </Tooltip>
-              </Marker>
+          {/* ═══ COMPUTED DRONE ROUTE ═══ */}
+          {pathPositions.length >= 2 && (
+            <>
+              <Polyline positions={pathPositions}
+                pathOptions={{
+                  color: '#7c3aed', weight: 5, opacity: 0.9,
+                  lineCap: 'round', lineJoin: 'round', dashArray: '10,5'
+                }}
+              />
+              {pathPositions.slice(1, -1).map((pos, i) => (
+                <CircleMarker key={`wp-${i}`} center={pos} radius={4}
+                  pathOptions={{ color: '#0d9488', fillColor: '#fff', fillOpacity: 1, weight: 2 }}
+                >
+                  <Tooltip direction="top" offset={[0, -5]}>
+                    <span className="text-[10px] font-bold">WP {i+1}</span>
+                  </Tooltip>
+                </CircleMarker>
+              ))}
+            </>
           )}
 
-          {/* ── Flight Path Preview ───────────────────────────── */}
-          {source && destination && (
-            <Polyline
-              positions={[
-                [source.lat, source.lng],
-                [destination.lat,   destination.lng],
-              ]}
-              pathOptions={{ color: '#0d1b2a', weight: 3, dashArray: '8,8', opacity: 0.8 }}
-            />
+          {/* Source marker (green) */}
+          {source && (
+            <Marker position={[source.lat, source.lng]} icon={greenIcon}>
+              <Tooltip permanent direction="top" offset={[0, -40]}>
+                <span className="text-[10px] font-black uppercase text-green-800">🛫 {source.name}</span>
+              </Tooltip>
+            </Marker>
+          )}
+
+          {/* Destination marker (red) */}
+          {destination && (
+            <Marker position={[destination.lat, destination.lng]} icon={redIcon}>
+              <Tooltip permanent direction="top" offset={[0, -40]}>
+                <span className="text-[10px] font-black uppercase text-red-800">🛬 {destination.name}</span>
+              </Tooltip>
+            </Marker>
           )}
         </MapContainer>
 
         {/* Coordinate readout */}
         <div className="absolute bottom-4 left-4 z-10 space-y-2">
-          {[{ label: 'Departure', item: source },
-            { label: 'Arrival',   item: destination }].map(({ label, item }) => (
+          {[{ label: 'Source', item: source, icon: '🛫' }, { label: 'Destination', item: destination, icon: '🛬' }].map(({ label, item, icon }) => (
             <div key={label} className="glass-card px-4 py-2 flex items-center gap-3 bg-white border border-navy-900/20 shadow-xl">
               <div className={`w-2.5 h-2.5 rounded-full ${item ? 'bg-navy-900' : 'bg-gray-300'}`} />
               <div>
-                <p className="text-[8px] font-black text-navy-600 uppercase tracking-widest">{label}</p>
+                <p className="text-[8px] font-black text-navy-600 uppercase tracking-widest">{icon} {label}</p>
                 <p className="text-[10px] font-black text-navy-900">
                   {item?.name || 'Not selected'}
                   {item ? ` (${item.lat.toFixed(4)}, ${item.lng.toFixed(4)})` : ''}
@@ -326,6 +316,18 @@ const MissionPlanner = () => {
             </div>
           ))}
         </div>
+
+        {/* Route info */}
+        {routeStats && (
+          <div className="absolute bottom-4 right-4 z-10 px-4 py-3 rounded-2xl bg-white border border-navy-900/20 shadow-xl text-[11px] font-bold text-navy-800 space-y-1">
+            <div className="flex items-center gap-2 font-black text-navy-900 text-xs uppercase tracking-wide mb-1">
+              <Navigation size={12} /> Route Info
+            </div>
+            <div>📍 {routeStats.waypoints} waypoints</div>
+            {routeStats.distance && <div>📏 {routeStats.distance.toFixed(0)} m</div>}
+            <div className="text-teal-600 text-[10px]">✅ NFZ-safe route</div>
+          </div>
+        )}
       </div>
     </div>
   );

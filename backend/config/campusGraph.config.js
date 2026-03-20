@@ -1,447 +1,194 @@
-// Auto-generated from mapConfig.js for backend routing validation
+/**
+ * campusGraph.config.js — Backend routing graph for IIT Kanpur.
+ * ✅ SYNCED from: Drone_Map_IITK final.ipynb (64 nodes)
+ *
+ * Used by navigation.service.js for graph-based path planning.
+ * Node IDs use human-readable keys matching the notebook's NODES dict.
+ */
 
+// ─────────────────────────────────────────────────────────────
+// 64 CAMPUS NODES
+// ─────────────────────────────────────────────────────────────
 export const CAMPUS_NODES = [
-  {
-    "id": "N1",
-    "name": "OAT",
-    "lat": 26.5127,
-    "lng": 80.2325
-  },
-  {
-    "id": "N2",
-    "name": "Shopping Complex",
-    "lat": 26.5098,
-    "lng": 80.2317
-  },
-  {
-    "id": "N3",
-    "name": "Hall 2 Gate",
-    "lat": 26.5080732,
-    "lng": 80.2307519
-  },
-  {
-    "id": "N4",
-    "name": "Library",
-    "lat": 26.5092432,
-    "lng": 80.2291084
-  },
-  {
-    "id": "N5",
-    "name": "Lecture Hall Complex",
-    "lat": 26.5104868,
-    "lng": 80.2319552
-  },
-  {
-    "id": "N6",
-    "name": "Hospital",
-    "lat": 26.5053275,
-    "lng": 80.2307782
-  },
-  {
-    "id": "N7",
-    "name": "Hall 5",
-    "lat": 26.5080831,
-    "lng": 80.2353833
-  },
-  {
-    "id": "N8",
-    "name": "Sports Complex",
-    "lat": 26.5118091,
-    "lng": 80.2240584
-  },
-  {
-    "id": "N9",
-    "name": "Main Gate",
-    "lat": 26.5033379,
-    "lng": 80.2308934
-  },
-  {
-    "id": "N10",
-    "name": "SIDBI Innovation Centre",
-    "lat": 26.5046062,
-    "lng": 80.2307893
-  },
-  {
-    "id": "N11",
-    "name": "Outreach Auditorium",
-    "lat": 26.5099195,
-    "lng": 80.227528
-  },
-  {
-    "id": "N12",
-    "name": "NB Junction",
-    "lat": 26.5073323,
-    "lng": 80.2307605
-  },
-  {
-    "id": "N13",
-    "name": "Node-N13",
-    "lat": 26.5053169,
-    "lng": 80.2289344
-  },
-  {
-    "id": "N14",
-    "name": "Node-N14",
-    "lat": 26.5061221,
-    "lng": 80.2289374
-  },
-  {
-    "id": "N15",
-    "name": "Node-N15",
-    "lat": 26.5061213,
-    "lng": 80.2272366
-  },
-  {
-    "id": "N16",
-    "name": "Node-N16",
-    "lat": 26.5080829,
-    "lng": 80.2327887
-  },
-  {
-    "id": "N17",
-    "name": "Node-N17",
-    "lat": 26.5109512,
-    "lng": 80.2319573
-  },
-  {
-    "id": "N18",
-    "name": "Node-N18",
-    "lat": 26.5110494,
-    "lng": 80.2327477
-  },
-  {
-    "id": "N19",
-    "name": "Node-N19",
-    "lat": 26.511113,
-    "lng": 80.231958
-  },
-  {
-    "id": "N20",
-    "name": "Node-N20",
-    "lat": 26.5111166,
-    "lng": 80.2307192
-  },
-  {
-    "id": "N21",
-    "name": "Node-N21",
-    "lat": 26.5111166,
-    "lng": 80.2308991
-  },
-  {
-    "id": "N22",
-    "name": "Node-N22",
-    "lat": 26.511352,
-    "lng": 80.2325242
-  },
-  {
-    "id": "N23",
-    "name": "Node-N23",
-    "lat": 26.5115261,
-    "lng": 80.232519
-  },
-  {
-    "id": "N24",
-    "name": "Node-N24",
-    "lat": 26.5117106,
-    "lng": 80.2231664
-  },
-  {
-    "id": "N25",
-    "name": "Node-N25",
-    "lat": 26.5118336,
-    "lng": 80.2269616
-  },
-  {
-    "id": "N26",
-    "name": "Node-N26",
-    "lat": 26.5118499,
-    "lng": 80.2289397
-  },
-  {
-    "id": "N27",
-    "name": "Node-N27",
-    "lat": 26.5123479,
-    "lng": 80.2230477
-  },
-  {
-    "id": "N28",
-    "name": "Node-N28",
-    "lat": 26.5124727,
-    "lng": 80.2264434
-  },
-  {
-    "id": "N29",
-    "name": "Node-N29",
-    "lat": 26.5124935,
-    "lng": 80.226967
-  },
-  {
-    "id": "N30",
-    "name": "Node-N30",
-    "lat": 26.5128147,
-    "lng": 80.2273943
-  },
-  {
-    "id": "N31",
-    "name": "Node-N31",
-    "lat": 26.513145,
-    "lng": 80.2240138
-  },
-  {
-    "id": "N32",
-    "name": "Node-N32",
-    "lat": 26.5131731,
-    "lng": 80.225341
-  },
-  {
-    "id": "N33",
-    "name": "Node-N33",
-    "lat": 26.5132954,
-    "lng": 80.2296218
-  },
-  {
-    "id": "N34",
-    "name": "Node-N34",
-    "lat": 26.5133116,
-    "lng": 80.2263227
-  },
-  {
-    "id": "N35",
-    "name": "Node-N35",
-    "lat": 26.5137461,
-    "lng": 80.2221335
-  },
-  {
-    "id": "N36",
-    "name": "Node-N36",
-    "lat": 26.5138363,
-    "lng": 80.2239987
-  },
-  {
-    "id": "N37",
-    "name": "Node-N37",
-    "lat": 26.5140518,
-    "lng": 80.223994
-  },
-  {
-    "id": "N38",
-    "name": "Node-N38",
-    "lat": 26.5144208,
-    "lng": 80.2236377
-  },
-  {
-    "id": "N39",
-    "name": "Node-N39",
-    "lat": 26.5150168,
-    "lng": 80.2308796
-  },
-  {
-    "id": "N40",
-    "name": "Node-N40",
-    "lat": 26.5045975,
-    "lng": 80.2289371
-  },
-  {
-    "id": "N41",
-    "name": "Node-N41",
-    "lat": 26.5041249,
-    "lng": 80.2253693
-  },
-  {
-    "id": "N42",
-    "name": "Node-N42",
-    "lat": 26.5045914,
-    "lng": 80.2338762
-  },
-  {
-    "id": "N43",
-    "name": "Node-N43",
-    "lat": 26.5049713,
-    "lng": 80.23336
-  }
+    // ── ACADEMIC (11) ─────────────────────────────────────────
+    { id: "LHC",    name: "Lecture Hall Complex",  lat: 26.5190, lng: 80.2330 },
+    { id: "FAC",    name: "Faculty Building",       lat: 26.5185, lng: 80.2315 },
+    { id: "CSE",    name: "Computer Science Dept",  lat: 26.5178, lng: 80.2340 },
+    { id: "EE",     name: "Electrical Dept",        lat: 26.5172, lng: 80.2350 },
+    { id: "ME",     name: "Mechanical Dept",        lat: 26.5168, lng: 80.2360 },
+    { id: "CE",     name: "Civil Dept",             lat: 26.5175, lng: 80.2305 },
+    { id: "CHM",    name: "Chemistry Dept",         lat: 26.5182, lng: 80.2295 },
+    { id: "PHY",    name: "Physics Dept",           lat: 26.5188, lng: 80.2285 },
+    { id: "LIB",    name: "Library",                lat: 26.5155, lng: 80.2322 },
+    { id: "MSE",    name: "Materials Science",      lat: 26.5165, lng: 80.2370 },
+    { id: "AER",    name: "Aerospace Dept",         lat: 26.5160, lng: 80.2345 },
+
+    // ── ADMINISTRATIVE (7) ────────────────────────────────────
+    { id: "GATE",   name: "Main Gate",              lat: 26.5145, lng: 80.2240 },
+    { id: "ADM",    name: "Admin Block",            lat: 26.5168, lng: 80.2330 },
+    { id: "DIR",    name: "Director Office",        lat: 26.5170, lng: 80.2325 },
+    { id: "GH",     name: "Guest House",            lat: 26.5195, lng: 80.2270 },
+    { id: "FRA",    name: "Faculty Residences A",   lat: 26.5205, lng: 80.2260 },
+    { id: "FRB",    name: "Faculty Residences B",   lat: 26.5210, lng: 80.2275 },
+    { id: "SEC",    name: "Security Office",        lat: 26.5148, lng: 80.2248 },
+
+    // ── HOSTELS (14) ──────────────────────────────────────────
+    { id: "H1",     name: "Hall 1",                 lat: 26.5130, lng: 80.2285 },
+    { id: "H2",     name: "Hall 2",                 lat: 26.5125, lng: 80.2295 },
+    { id: "H3",     name: "Hall 3",                 lat: 26.5120, lng: 80.2305 },
+    { id: "H4",     name: "Hall 4",                 lat: 26.5115, lng: 80.2315 },
+    { id: "H5",     name: "Hall 5",                 lat: 26.5110, lng: 80.2325 },
+    { id: "H6",     name: "Hall 6",                 lat: 26.5108, lng: 80.2340 },
+    { id: "H7",     name: "Hall 7",                 lat: 26.5112, lng: 80.2355 },
+    { id: "H8",     name: "Hall 8",                 lat: 26.5118, lng: 80.2365 },
+    { id: "H9",     name: "Hall 9",                 lat: 26.5130, lng: 80.2375 },
+    { id: "H10",    name: "Hall 10",                lat: 26.5140, lng: 80.2380 },
+    { id: "H11",    name: "Hall 11",                lat: 26.5150, lng: 80.2375 },
+    { id: "H12",    name: "Hall 12",                lat: 26.5158, lng: 80.2370 },
+    { id: "GH1",    name: "Girls Hostel 1",         lat: 26.5098, lng: 80.2350 },
+    { id: "GH2",    name: "Girls Hostel 2",         lat: 26.5092, lng: 80.2338 },
+
+    // ── AMENITIES (10) ────────────────────────────────────────
+    { id: "OAT",    name: "OAT",                    lat: 26.5135, lng: 80.2325 },
+    { id: "SHOP",   name: "Shopping Complex",       lat: 26.5115, lng: 80.2300 },
+    { id: "GYM",    name: "Student Gymkhana",       lat: 26.5122, lng: 80.2318 },
+    { id: "MED",    name: "Medical Center",         lat: 26.5125, lng: 80.2310 },
+    { id: "CAN",    name: "Canteen North",          lat: 26.5180, lng: 80.2308 },
+    { id: "CANS",   name: "Canteen South",          lat: 26.5118, lng: 80.2332 },
+    { id: "BANK",   name: "Bank ATM",               lat: 26.5128, lng: 80.2302 },
+    { id: "POST",   name: "Post Office",            lat: 26.5132, lng: 80.2295 },
+    { id: "BOOK",   name: "Bookstore",              lat: 26.5128, lng: 80.2318 },
+    { id: "CAFE",   name: "Cafeteria Central",      lat: 26.5142, lng: 80.2322 },
+
+    // ── SPORTS (8) ────────────────────────────────────────────
+    { id: "FTBL",   name: "Football Ground",        lat: 26.5108, lng: 80.2295 },
+    { id: "CRIC",   name: "Cricket Ground",         lat: 26.5095, lng: 80.2320 },
+    { id: "SWIM",   name: "Swimming Pool",          lat: 26.5102, lng: 80.2308 },
+    { id: "TEN",    name: "Tennis Courts",          lat: 26.5105, lng: 80.2335 },
+    { id: "BSKT",   name: "Basketball Court",       lat: 26.5112, lng: 80.2345 },
+    { id: "ATH",    name: "Athletics Track",        lat: 26.5098, lng: 80.2305 },
+    { id: "HOC",    name: "Hockey Ground",          lat: 26.5090, lng: 80.2295 },
+    { id: "VOL",    name: "Volleyball Court",       lat: 26.5105, lng: 80.2350 },
+
+    // ── DRONE CHARGING HUBS (5) ───────────────────────────────
+    { id: "HUB-N",  name: "Hub North",              lat: 26.5200, lng: 80.2320 },
+    { id: "HUB-S",  name: "Hub South",              lat: 26.5088, lng: 80.2330 },
+    { id: "HUB-E",  name: "Hub East",               lat: 26.5148, lng: 80.2392 },
+    { id: "HUB-W",  name: "Hub West",               lat: 26.5148, lng: 80.2248 },
+    { id: "HUB-C",  name: "Hub Central",            lat: 26.5140, lng: 80.2318 },
+
+    // ── INFRASTRUCTURE (1) ────────────────────────────────────
+    { id: "PWR",    name: "Power Station",          lat: 26.5090, lng: 80.2375 },
 ];
 
+// ─────────────────────────────────────────────────────────────
+// CAMPUS EDGES — flight corridors between nodes.
+// Based on notebook's hub-to-node connections + dept adjacency.
+// Bidirectional. Navigation service snaps to nearest node first.
+// ─────────────────────────────────────────────────────────────
 export const CAMPUS_EDGES = [
-  {
-    "from": "N9",
-    "to": "N10"
-  },
-  {
-    "from": "N10",
-    "to": "N13"
-  },
-  {
-    "from": "N13",
-    "to": "N6"
-  },
-  {
-    "from": "N6",
-    "to": "N14"
-  },
-  {
-    "from": "N14",
-    "to": "N15"
-  },
-  {
-    "from": "N15",
-    "to": "N12"
-  },
-  {
-    "from": "N12",
-    "to": "N3"
-  },
-  {
-    "from": "N3",
-    "to": "N16"
-  },
-  {
-    "from": "N16",
-    "to": "N7"
-  },
-  {
-    "from": "N7",
-    "to": "N4"
-  },
-  {
-    "from": "N4",
-    "to": "N11"
-  },
-  {
-    "from": "N11",
-    "to": "N5"
-  },
-  {
-    "from": "N5",
-    "to": "N17"
-  },
-  {
-    "from": "N17",
-    "to": "N18"
-  },
-  {
-    "from": "N18",
-    "to": "N19"
-  },
-  {
-    "from": "N19",
-    "to": "N20"
-  },
-  {
-    "from": "N20",
-    "to": "N21"
-  },
-  {
-    "from": "N21",
-    "to": "N22"
-  },
-  {
-    "from": "N22",
-    "to": "N23"
-  },
-  {
-    "from": "N23",
-    "to": "N24"
-  },
-  {
-    "from": "N24",
-    "to": "N8"
-  },
-  {
-    "from": "N8",
-    "to": "N25"
-  },
-  {
-    "from": "N25",
-    "to": "N26"
-  },
-  {
-    "from": "N26",
-    "to": "N27"
-  },
-  {
-    "from": "N27",
-    "to": "N28"
-  },
-  {
-    "from": "N28",
-    "to": "N29"
-  },
-  {
-    "from": "N29",
-    "to": "N1"
-  },
-  {
-    "from": "N1",
-    "to": "N30"
-  },
-  {
-    "from": "N30",
-    "to": "N31"
-  },
-  {
-    "from": "N31",
-    "to": "N32"
-  },
-  {
-    "from": "N32",
-    "to": "N33"
-  },
-  {
-    "from": "N33",
-    "to": "N34"
-  },
-  {
-    "from": "N34",
-    "to": "N35"
-  },
-  {
-    "from": "N35",
-    "to": "N36"
-  },
-  {
-    "from": "N36",
-    "to": "N37"
-  },
-  {
-    "from": "N37",
-    "to": "N38"
-  },
-  {
-    "from": "N38",
-    "to": "N39"
-  },
-  {
-    "from": "N39",
-    "to": "N2"
-  },
-  {
-    "from": "N2",
-    "to": "N40"
-  },
-  {
-    "from": "N40",
-    "to": "N41"
-  },
-  {
-    "from": "N41",
-    "to": "N42"
-  },
-  {
-    "from": "N42",
-    "to": "N43"
-  },
-  {
-    "from": "N43",
-    "to": "N9"
-  }
+    // Hub North ↔ Academic zone
+    { from: "HUB-N", to: "LHC"  },
+    { from: "HUB-N", to: "FAC"  },
+    { from: "HUB-N", to: "GH"   },
+    { from: "HUB-N", to: "DIR"  },
+
+    // Hub Central ↔ Core campus (primary hub)
+    { from: "HUB-C", to: "LIB"  },
+    { from: "HUB-C", to: "OAT"  },
+    { from: "HUB-C", to: "CAFE" },
+    { from: "HUB-C", to: "BOOK" },
+    { from: "HUB-C", to: "GYM"  },
+    { from: "HUB-C", to: "MED"  },
+    { from: "HUB-C", to: "H4"   },
+    { from: "HUB-C", to: "H3"   },
+
+    // Hub South ↔ Sports & south hostels
+    { from: "HUB-S", to: "GH2"  },
+    { from: "HUB-S", to: "CRIC" },
+    { from: "HUB-S", to: "SWIM" },
+    { from: "HUB-S", to: "HOC"  },
+    { from: "HUB-S", to: "GH1"  },
+    { from: "HUB-S", to: "ATH"  },
+
+    // Hub East ↔ East hostel block
+    { from: "HUB-E", to: "H11"  },
+    { from: "HUB-E", to: "H10"  },
+    { from: "HUB-E", to: "H9"   },
+    { from: "HUB-E", to: "H8"   },
+    { from: "HUB-E", to: "H12"  },
+    { from: "HUB-E", to: "MSE"  },
+
+    // Hub West ↔ Main Gate & security
+    { from: "HUB-W", to: "GATE" },
+    { from: "HUB-W", to: "SEC"  },
+    { from: "HUB-W", to: "FRA"  },
+    { from: "HUB-W", to: "FRB"  },
+
+    // Academic spine
+    { from: "LHC",  to: "FAC"   },
+    { from: "FAC",  to: "CE"    },
+    { from: "FAC",  to: "CAN"   },
+    { from: "CE",   to: "CHM"   },
+    { from: "CHM",  to: "PHY"   },
+    { from: "LHC",  to: "CSE"   },
+    { from: "CSE",  to: "EE"    },
+    { from: "EE",   to: "ME"    },
+    { from: "ME",   to: "MSE"   },
+    { from: "AER",  to: "EE"    },
+    { from: "AER",  to: "H7"    },
+    { from: "LIB",  to: "OAT"   },
+    { from: "LIB",  to: "ADM"   },
+
+    // Admin cluster
+    { from: "ADM",  to: "DIR"   },
+    { from: "DIR",  to: "GH"    },
+    { from: "GH",   to: "FRA"   },
+    { from: "FRA",  to: "FRB"   },
+
+    // Hostel chain (south-centre)
+    { from: "H1",   to: "H2"    },
+    { from: "H2",   to: "H3"    },
+    { from: "H3",   to: "H4"    },
+    { from: "H4",   to: "H5"    },
+    { from: "H5",   to: "H6"    },
+    { from: "H6",   to: "H7"    },
+    { from: "H7",   to: "H8"    },
+    { from: "H8",   to: "H9"    },
+    { from: "H9",   to: "H10"   },
+    { from: "H10",  to: "H11"   },
+    { from: "H11",  to: "H12"   },
+
+    // Amenities cluster
+    { from: "SHOP", to: "H3"    },
+    { from: "SHOP", to: "FTBL"  },
+    { from: "GYM",  to: "OAT"   },
+    { from: "MED",  to: "BANK"  },
+    { from: "BANK", to: "POST"  },
+    { from: "POST", to: "H1"    },
+
+    // Sports cluster
+    { from: "FTBL", to: "SWIM"  },
+    { from: "SWIM", to: "ATH"   },
+    { from: "ATH",  to: "HOC"   },
+    { from: "TEN",  to: "BSKT"  },
+    { from: "BSKT", to: "VOL"   },
+    { from: "VOL",  to: "GH1"   },
+    { from: "GH1",  to: "GH2"   },
+
+    // Infrastructure
+    { from: "PWR",  to: "HUB-E" },
+    { from: "PWR",  to: "H8"    },
 ];
 
-export const ADJACENCY = CAMPUS_EDGES.reduce(
-  (acc, edge) => {
+// ─────────────────────────────────────────────────────────────
+// ADJACENCY MAP (auto-generated, bidirectional)
+// Used by navigation.service.js for BFS/graph pathfinding.
+// ─────────────────────────────────────────────────────────────
+export const ADJACENCY = CAMPUS_EDGES.reduce((acc, edge) => {
     if (!acc[edge.from]) acc[edge.from] = [];
-    if (!acc[edge.to]) acc[edge.to] = [];
+    if (!acc[edge.to])   acc[edge.to]   = [];
     acc[edge.from].push(edge.to);
-    acc[edge.to].push(edge.from); // bidirectional
+    acc[edge.to].push(edge.from);
     return acc;
-  }, {}
-);
+}, {});
