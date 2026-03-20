@@ -10,7 +10,8 @@ import {
   Activity,
   Zap,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Mountain
 } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import axios from 'axios';
@@ -23,7 +24,8 @@ const AddFleetPage = () => {
   const [formData, setFormData] = useState({
     droneId: '',
     vehicleType: 'drone',
-    payloadCapacity: 2.0
+    payloadCapacity: 2.0,
+    operatingAltitude: 50
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +41,7 @@ const AddFleetPage = () => {
     try {
       await axios.post(`${API_URL}/drones`, formData);
       setFeedback({ type: 'success', msg: `Successfully added ${formData.droneId} to the fleet.` });
-      setFormData({ droneId: '', vehicleType: 'drone', payloadCapacity: 2.0 });
+      setFormData({ droneId: '', vehicleType: 'drone', payloadCapacity: 2.0, operatingAltitude: 50 });
     } catch (err) {
       setFeedback({ 
         type: 'error', 
@@ -141,6 +143,25 @@ const AddFleetPage = () => {
                 </div>
               </div>
 
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-navy-600 uppercase tracking-widest flex items-center gap-1">
+                  <Mountain size={10} /> Operating Altitude (m)
+                </label>
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="range"
+                    min="20"
+                    max="120"
+                    step="10"
+                    value={formData.operatingAltitude}
+                    onChange={(e) => setFormData({...formData, operatingAltitude: parseInt(e.target.value)})}
+                    className="flex-1 h-1.5 bg-navy-900/10 rounded-lg appearance-none cursor-pointer accent-navy-900"
+                  />
+                  <span className="text-lg font-sora font-black text-navy-900 min-w-[50px]">{formData.operatingAltitude}m</span>
+                </div>
+                <p className="text-[8px] text-navy-400 font-bold">Drone will ONLY fly at this altitude layer (20m - 120m)</p>
+              </div>
+
               {feedback && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -187,6 +208,7 @@ const AddFleetPage = () => {
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-navy-400">Unit ID</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-navy-400">Type</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-navy-400">Max Payload</th>
+                    <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-navy-400">Altitude</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-navy-400">Current Battery</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-navy-400">Status</th>
                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-navy-400 text-right">Actions</th>
@@ -214,6 +236,11 @@ const AddFleetPage = () => {
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-xs font-bold text-navy-900 uppercase">{drone.payloadCapacity}KG</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-[10px] font-black">
+                            <Mountain size={10} /> {drone.operatingAltitude || 50}m
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">

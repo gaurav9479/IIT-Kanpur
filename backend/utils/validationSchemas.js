@@ -4,9 +4,11 @@ export const droneSchema = z.object({
   body: z.object({
     droneId: z.string().min(3).max(20),
     type: z.string().optional(),
+    vehicleType: z.enum(["drone", "plane"]).optional(),
+    operatingAltitude: z.number().min(20).max(120).optional(),
     batteryLevel: z.number().min(0).max(100).optional(),
     payloadCapacity: z.number().positive(),
-    status: z.enum(["idle", "delivering", "maintenance", "charging"]).optional(),
+    status: z.enum(["idle", "delivering", "maintenance", "charging", "grounded"]).optional(),
     location: z.object({
       lat: z.number(),
       lng: z.number(),

@@ -28,6 +28,12 @@ const DroneSchema = new mongoose.Schema({
     enum: ["drone", "plane"],
     default: "drone"
   },
+  operatingAltitude: {
+    type: Number,
+    min: 20,
+    max: 120,
+    default: 50
+  },
   location: {
     lat: { type: Number, default: 0 },
     lng: { type: Number, default: 0 }

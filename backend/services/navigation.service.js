@@ -338,7 +338,9 @@ class NavigationService {
         if (astarPath && astarPath.length >= 2) {
             const slotIndex = getTimeSlot(Date.now());
             const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
-            const altitude = lane ? lane.altitude : 50;
+            
+            // Use preferred operatingAltitude if provided, else use lane altitude or default to 50
+            const altitude = options.operatingAltitude || (lane ? lane.altitude : 50);
 
             if (lane) {
                 reserveSlot(lane.id, slotIndex, droneId);
@@ -368,7 +370,9 @@ class NavigationService {
 
             const slotIndex = getTimeSlot(Date.now());
             const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
-            const altitude = lane ? lane.altitude : 50;
+            
+            // Use preferred operatingAltitude if provided, else use lane altitude or default to 50
+            const altitude = options.operatingAltitude || (lane ? lane.altitude : 50);
 
             const finalPath = [
                 { lat: start.lat, lng: start.lng, z: altitude },
@@ -402,7 +406,7 @@ class NavigationService {
             distance: distanceCalculator.calculate2DDistance(start, end),
             lane: 5,
             laneAssigned: false,
-            altitude: 50,
+            altitude: options.operatingAltitude || 50,
         };
     }
 

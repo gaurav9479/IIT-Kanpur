@@ -77,11 +77,30 @@ class AIService {
         }
     }
     /**
-     * Backward compatibility wrapper for battery prediction.
+     * Predict battery drain using the RandomForest ML model (battery_model.pkl).
+     * Falls back to ETA-based estimate if model is unavailable.
      */
     async predictBatteryDrain(params) {
-        const result = await this.predictETA(params);
-        return result ? result.batteryUsed : null;
+        try {
+            const response = await axios.post(`${AI_URL}/predict/battery`, {
+                distance_km:     params.distance || 1.0,
+                wind_speed:      params.windSpeed || 5.0,
+                payload_kg:      params.payload || 2.0,
+                drone_speed_kmh: params.droneSpeed || 35.0,
+                num_drones:      params.numDrones || 1,
+                temperature:     params.temperature || 30.0,
+                visibility_km:   params.visibility || 8.0,
+                battery_level:   params.batteryLevel || 100.0,
+                hour:            new Date().getHours(),
+                day_of_week:     new Date().getDay(),
+            });
+            logger.info(`[AI-SERVICE] Battery ML prediction: ${JSON.stringify(response.data)}`);
+            return response.data; // { batteryUsed, batteryAfter, drainPerKm, safeToFly, model }
+        } catch (error) {
+            logger.warn(`[AI-SERVICE] Battery model unavailable, falling back to ETA: ${error.message}`);
+            const result = await this.predictETA(params);
+            return result ? { batteryUsed: result.batteryUsed, batteryAfter: result.batteryAfter, model: "fallback-eta" } : null;
+        }
     }
 }
 

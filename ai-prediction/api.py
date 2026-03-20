@@ -20,6 +20,15 @@ from config import (
 from congestion_predictor import predict_congestion
 from eta_predictor import predict_eta
 
+# ── Load Battery Drain ML Model ──────────────────────────────
+import joblib
+try:
+    battery_model = joblib.load("battery_model.pkl")
+    print("✅ Battery model loaded:", type(battery_model).__name__)
+except Exception as e:
+    battery_model = None
+    print(f"⚠️ Battery model not loaded: {e}")
+
 warnings.filterwarnings("ignore")
 
 app = FastAPI(
@@ -36,7 +45,7 @@ app.add_middleware(
 )
 
 START_TIME = time.time()
-COUNTER    = {"congestion": 0, "eta": 0}
+COUNTER    = {"congestion": 0, "eta": 0, "battery": 0}
 
 
 class CongestionInput(BaseModel):
@@ -66,6 +75,19 @@ class ETAInput(BaseModel):
     hour:            int   = Field(None)
     day_of_week:     int   = Field(None)
     congestion_score:float = Field(0.0)
+
+
+class BatteryInput(BaseModel):
+    distance_km:     float = Field(..., description="Flight distance in km")
+    wind_speed:      float = Field(5.0)
+    payload_kg:      float = Field(1.0)
+    drone_speed_kmh: float = Field(35.0)
+    num_drones:      int   = Field(1)
+    temperature:     float = Field(30.0)
+    visibility_km:   float = Field(8.0)
+    battery_level:   float = Field(100.0)
+    hour:            int   = Field(None)
+    day_of_week:     int   = Field(None)
 
 
 @app.get("/health")
@@ -147,6 +169,46 @@ async def eta_endpoint(req: ETAInput):
             "safeToFly":        result["safeToFly"],
             "batteryAfter":     result["batteryAfter"],
             "timestamp":        datetime.now().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/predict/battery")
+async def battery_endpoint(req: BatteryInput):
+    """Predict battery drain using RandomForest ML model."""
+    COUNTER["battery"] += 1
+    if battery_model is None:
+        raise HTTPException(status_code=503, detail="Battery model not loaded")
+
+    now = datetime.now()
+    hour = req.hour if req.hour is not None else now.hour
+    dow  = req.day_of_week if req.day_of_week is not None else now.weekday()
+
+    try:
+        features = np.array([[
+            req.distance_km,
+            req.wind_speed,
+            req.payload_kg,
+            req.drone_speed_kmh,
+            req.num_drones,
+            req.temperature,
+            req.visibility_km,
+            req.battery_level,
+            hour,
+            dow,
+        ]])
+
+        battery_used = float(battery_model.predict(features)[0])
+        battery_after = max(0.0, req.battery_level - battery_used)
+
+        return {
+            "batteryUsed":    round(battery_used, 2),
+            "batteryAfter":   round(battery_after, 2),
+            "drainPerKm":     round(battery_used / max(0.01, req.distance_km), 2),
+            "safeToFly":      battery_after > BATTERY_LOW,
+            "model":          "RandomForestRegressor",
+            "timestamp":      now.isoformat(),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

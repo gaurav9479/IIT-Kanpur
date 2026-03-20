@@ -22,6 +22,7 @@ import Drone from "../models/Drone.model.js";
 import logger from "../utils/logger.js";
 import altitudeManager from "./altitudeManager.js";
 import collision3D from "./collision3D.js";
+import aiService from "./ai.service.js";
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -29,7 +30,7 @@ import collision3D from "./collision3D.js";
 const DEFAULT_SPEED_MPS      = 10;       // m/s cruise speed
 const TICK_MS                = 1000;     // 1-second update cadence
 const EARTH_RADIUS_M         = 6_371_000;
-const BATTERY_DRAIN_PER_M    = 0.02;    // % per metre flown (100% ÷ 5000m range)
+const BATTERY_DRAIN_PER_M    = 0.02;    // FALLBACK: % per metre (used if ML model unavailable)
 const BATTERY_LOW_THRESHOLD  = 15;      // % — triggers emergency charge
 const CHARGE_DURATION_S      = 3600;    // 1 hour in seconds
 const CHARGE_RATE_PER_S      = 100 / CHARGE_DURATION_S; // % per second
@@ -227,8 +228,12 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
     return;
   }
 
-  // Assign altitude layer
-  const assignedAlt = altitudeManager.assignLayer(droneId);
+  // Fetch drone from database to get its preferred operating altitude
+  const drone = await Drone.findOne({ droneId });
+  const preferredAlt = drone?.operatingAltitude;
+
+  // Assign altitude layer (uses preferredAlt if defined, else dynamic layer)
+  const assignedAlt = preferredAlt || altitudeManager.assignLayer(droneId);
 
   // Normalise path
   const normPath = path3D.map(wp => ({
@@ -246,6 +251,29 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
 
   logger.info(`[3D] ${droneId} — mission start | path=${normPath.length}pts len=${pathLenM.toFixed(0)}m alt=${assignedAlt}m speed=${speedMps}m/s battery=${battery}%`);
 
+  // ── Query ML battery model for drain rate ────────────────────
+  let drainPerM = BATTERY_DRAIN_PER_M; // fallback
+  try {
+    const mlResult = await aiService.predictBatteryDrain({
+      distance:     pathLenM / 1000,
+      batteryLevel: battery,
+      payload:      1.0,
+      windSpeed:    5.0,
+      droneSpeed:   speedMps * 3.6,
+    });
+    if (mlResult && mlResult.drainPerKm) {
+      drainPerM = mlResult.drainPerKm / 1000; // convert %/km → %/m
+      logger.info(`[3D] ${droneId} — ML battery model: ${mlResult.batteryUsed}% drain, ${mlResult.drainPerKm}%/km (model: ${mlResult.model})`);
+
+      io.emit("event_log", {
+        message: `🔋 ML BATTERY MODEL: ${droneId} | Predicted drain: ${mlResult.batteryUsed}% | After: ${mlResult.batteryAfter}% | Model: ${mlResult.model}`,
+        type: "info"
+      });
+    }
+  } catch (err) {
+    logger.warn(`[3D] ${droneId} — ML battery model unavailable, using fallback ${BATTERY_DRAIN_PER_M}%/m`);
+  }
+
   const ticker = setInterval(async () => {
     const elapsedSec  = (Date.now() - startTime) / 1000;
     const newElapsedM = elapsedSec * speedMps;
@@ -254,8 +282,8 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
 
     const pos = interpolate3DPath(normPath, elapsedMetres);
 
-    // ── Battery drain ────────────────────────────────────────
-    battery = Math.max(0, battery - deltaM * BATTERY_DRAIN_PER_M);
+    // ── Battery drain (ML model rate) ────────────────────────
+    battery = Math.max(0, battery - deltaM * drainPerM);
 
     const state = buildDroneState3D(droneId, pos, speedMps, { totalMetres: pathLenM }, battery);
     lastPos = pos;

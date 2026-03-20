@@ -46,7 +46,8 @@ class MissionService {
                 dropLocation,
                 {
                     droneId: drone.droneId,
-                    congestionScores
+                    congestionScores,
+                    operatingAltitude: drone.operatingAltitude
                 }
             );
 
