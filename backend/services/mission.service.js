@@ -145,9 +145,17 @@ class MissionService {
 
         // Start 3D Simulation if path is available; fallback to legacy sim
         if (path && path.length >= 2) {
+            const payload = order.weight || 1.0;
+            // 5x drain multiplier ONLY for the battery emergency scenario (ORD-BATT- prefix)
+            // Normal heavy orders are NOT affected
+            const isBatteryScenario = order.orderId?.startsWith('ORD-BATT-');
+            const drainMultiplier = isBatteryScenario ? 5.0 : 1.0;
+            if (isBatteryScenario) {
+                logger.warn(`[MISSION] Battery scenario detected (${order.orderId}) → 5x drain multiplier applied to ${drone.droneId}`);
+            }
             drone3DService.startDrone3D(drone.droneId, path, 10, (id) => {
                 logger.info(`[3D] Drone ${id} completed 3D mission`);
-            });
+            }, drone.batteryLevel, payload, drainMultiplier);
         } else {
             simulationService.startDeliverySimulation(order._id, drone._id);
         }

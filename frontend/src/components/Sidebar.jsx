@@ -55,13 +55,13 @@ const Sidebar = () => {
   const [hovered, setHovered] = useState(null);
 
   return (
-    <aside className="w-64 bg-navy-900 flex flex-col shadow-2xl" style={{ background: 'linear-gradient(180deg, #0a1628 0%, #0d1f3c 60%, #0f2447 100%)' }}>
+    <aside className="w-64 bg-white border-r border-navy-900/10 flex flex-col shadow-sm">
 
       {/* ── Logo ── */}
       <div className="px-6 pt-8 pb-6">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/50">
+            <div className="w-10 h-10 rounded-xl bg-navy-900 flex items-center justify-center shadow-lg">
               <Plane className="text-white" size={20} strokeWidth={2.5} />
             </div>
             {/* Live pulse dot */}
@@ -71,23 +71,23 @@ const Sidebar = () => {
             </span>
           </div>
           <div>
-            <span className="font-sora font-black text-lg tracking-tight text-white uppercase leading-none">SkyTrace</span>
+            <span className="font-sora font-black text-lg tracking-tight text-navy-900 uppercase leading-none">SkyTrace</span>
             <div className="flex items-center gap-1 mt-0.5">
-              <Wifi size={8} className="text-emerald-400" />
-              <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">System Online</span>
+              <Wifi size={8} className="text-emerald-500" />
+              <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">System Online</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ── Divider ── */}
-      <div className="mx-6 h-px bg-white/5 mb-4" />
+      <div className="mx-6 h-px bg-navy-900/5 mb-4" />
 
       {/* ── Nav Sections ── */}
       <nav className="flex-1 px-3 overflow-y-auto custom-scrollbar space-y-5 pb-4">
         {sections.map((section) => (
           <div key={section.label}>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/25 px-3 mb-2">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-navy-400 px-3 mb-2">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -104,8 +104,8 @@ const Sidebar = () => {
                     className={`
                       group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200
                       ${isActive
-                        ? 'bg-gradient-to-r from-sky-500/20 to-blue-600/10 text-white border border-sky-500/20'
-                        : 'text-white/50 hover:text-white/90 hover:bg-white/5'
+                        ? 'bg-navy-900 text-white'
+                        : 'text-navy-600 hover:text-navy-900 hover:bg-navy-900/5'
                       }
                     `}
                   >
@@ -115,7 +115,7 @@ const Sidebar = () => {
                     )}
 
                     {/* Icon */}
-                    <span className={`transition-colors duration-200 ${isActive ? 'text-sky-400' : 'text-white/40 group-hover:text-white/70'}`}>
+                    <span className={`transition-colors duration-200 ${isActive ? 'text-white' : 'text-navy-400 group-hover:text-navy-700'}`}>
                       <item.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
                     </span>
 
@@ -126,7 +126,7 @@ const Sidebar = () => {
 
                     {/* Badge */}
                     {item.badge && (
-                      <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                      <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
                         {item.badge}
                       </span>
                     )}
@@ -135,7 +135,7 @@ const Sidebar = () => {
                     {!isActive && (
                       <ChevronRight
                         size={12}
-                        className={`text-white/20 transition-all duration-200 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'}`}
+                        className={`text-navy-300 transition-all duration-200 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'}`}
                       />
                     )}
                   </Link>
@@ -147,12 +147,12 @@ const Sidebar = () => {
       </nav>
 
       {/* ── Bottom ── */}
-      <div className="mx-6 h-px bg-white/5 mb-4" />
+      <div className="mx-6 h-px bg-navy-900/5 mb-4" />
       <div className="px-3 pb-6">
         <button className="
           w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl
-          text-red-400/70 hover:text-red-400 hover:bg-red-500/10 
-          transition-all duration-200 border border-transparent hover:border-red-500/20
+          text-red-500/70 hover:text-red-600 hover:bg-red-50
+          transition-all duration-200 border border-transparent hover:border-red-200
         ">
           <LogOut size={16} strokeWidth={2} />
           <span className="font-bold text-[11px] uppercase tracking-widest">Terminate Session</span>

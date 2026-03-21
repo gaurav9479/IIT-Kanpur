@@ -73,9 +73,23 @@ export function useSocket() {
             setConnected(false);
         });
 
-        // --- Event: telemetry_update ---
+        // --- Event: telemetry_update (legacy simulation) ---
         socket.on('telemetry_update', (data) => {
-            setDrones(prev => ({ ...prev, [data.droneId]: data }));
+            setDrones(prev => ({ ...prev, [data.droneId]: { ...prev[data.droneId], ...data } }));
+        });
+
+        // --- Event: drone_position_3d (primary 3D simulation engine) ---
+        // This is what drone3DService emits every second — must be mapped into drones state
+        socket.on('drone_position_3d', (data) => {
+            if (!data?.droneId) return;
+            setDrones(prev => ({ ...prev, [data.droneId]: { ...prev[data.droneId], ...data } }));
+        });
+
+        // --- Event: scenario_reset — clear stale drone markers ---
+        socket.on('scenario_reset', () => {
+            setDrones({});
+            setAlerts([]);
+            fetchInitialState(); // re-fetch reset drone list from DB
         });
 
         // --- Event: grid_update ---
@@ -137,6 +151,8 @@ export function useSocket() {
             socket.off('connect');
             socket.off('disconnect');
             socket.off('telemetry_update');
+            socket.off('drone_position_3d');
+            socket.off('scenario_reset');
             socket.off('grid_update');
             socket.off('safety_alert');
             socket.off('collision_warning_3d');

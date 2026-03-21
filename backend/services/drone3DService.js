@@ -23,6 +23,7 @@ import logger from "../utils/logger.js";
 import altitudeManager from "./altitudeManager.js";
 import collision3D from "./collision3D.js";
 import aiService from "./ai.service.js";
+import safetyService from "./safety.service.js";
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -217,7 +218,7 @@ function buildDetourToPowerStation(currentPos, safeAlt = 40) {
 // MAIN: START A 3D DELIVERY SIMULATION
 // ─────────────────────────────────────────────────────────────
 
-async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onComplete = null, initialBattery = 100) {
+async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onComplete = null, initialBattery = 100, payload = 1.0, drainMultiplier = 1.0) {
   if (activeMissions.has(droneId)) {
     logger.warn(`[3D] ${droneId} already has an active 3D mission — stopping previous`);
     stopDrone3D(droneId);
@@ -252,26 +253,27 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
   logger.info(`[3D] ${droneId} — mission start | path=${normPath.length}pts len=${pathLenM.toFixed(0)}m alt=${assignedAlt}m speed=${speedMps}m/s battery=${battery}%`);
 
   // ── Query ML battery model for drain rate ────────────────────
-  let drainPerM = BATTERY_DRAIN_PER_M; // fallback
+  let drainPerM = BATTERY_DRAIN_PER_M * drainMultiplier; // fallback (scaled)
   try {
     const mlResult = await aiService.predictBatteryDrain({
       distance:     pathLenM / 1000,
       batteryLevel: battery,
-      payload:      1.0,
+      payload,            // actual mission weight (not hardcoded 1.0)
       windSpeed:    5.0,
       droneSpeed:   speedMps * 3.6,
     });
     if (mlResult && mlResult.drainPerKm) {
-      drainPerM = mlResult.drainPerKm / 1000; // convert %/km → %/m
-      logger.info(`[3D] ${droneId} — ML battery model: ${mlResult.batteryUsed}% drain, ${mlResult.drainPerKm}%/km (model: ${mlResult.model})`);
+      // Apply drainMultiplier on top of ML prediction for scenario control
+      drainPerM = (mlResult.drainPerKm / 1000) * drainMultiplier;
+      logger.info(`[3D] ${droneId} — ML battery model: ${mlResult.batteryUsed}% drain, ${mlResult.drainPerKm}%/km × ${drainMultiplier}x = ${(drainPerM * 1000).toFixed(3)}%/km effective`);
 
       io.emit("event_log", {
-        message: `🔋 ML BATTERY MODEL: ${droneId} | Predicted drain: ${mlResult.batteryUsed}% | After: ${mlResult.batteryAfter}% | Model: ${mlResult.model}`,
+        message: `🔋 ML BATTERY MODEL: ${droneId} | Payload: ${payload}kg | Drain: ${mlResult.batteryUsed}% × ${drainMultiplier}x multiplier | Model: ${mlResult.model}`,
         type: "info"
       });
     }
   } catch (err) {
-    logger.warn(`[3D] ${droneId} — ML battery model unavailable, using fallback ${BATTERY_DRAIN_PER_M}%/m`);
+    logger.warn(`[3D] ${droneId} — ML battery model unavailable, using fallback ${(BATTERY_DRAIN_PER_M * drainMultiplier).toFixed(4)}%/m (×${drainMultiplier})`);
   }
 
   const ticker = setInterval(async () => {
@@ -307,7 +309,54 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
       logger.error(`[3D] DB update failed for ${droneId}: ${err.message}`);
     }
 
-    // ── ⚡ BATTERY EMERGENCY: divert to Power Station ────────
+    // ── 🛡️ SAFETY CHECK 1: NFZ boundary detection ────────────
+    // Checks the actual in-memory position (not stale DB location)
+    const nfzViolation = safetyService.isInsideNFZ({ lat: state.lat, lng: state.lng });
+    if (nfzViolation) {
+      const alertMsg = `🚨 NFZ VIOLATION: ${droneId} entered "${nfzViolation}" @ (${state.lat.toFixed(4)}, ${state.lng.toFixed(4)})`;
+      logger.error(`[SAFETY] ${alertMsg}`);
+      io.emit("safety_alert", {
+        type:    "NFZ_VIOLATION",
+        droneId,
+        zone:    nfzViolation,
+        lat:     state.lat,
+        lng:     state.lng,
+        message: alertMsg,
+      });
+      io.emit("event_log", { message: alertMsg, type: "error" });
+    }
+
+    // ── 🛡️ SAFETY CHECK 2: Live proximity (uses in-memory positions) ──
+    // Compares against all other active drones from activeMissions map
+    // to avoid stale DB reads
+    for (const [otherId, otherMission] of activeMissions.entries()) {
+      if (otherId === droneId) continue;
+      const otherState = otherMission.lastState;
+      if (!otherState) continue;
+      const dist2D = safetyService.getDistance(
+        { lat: state.lat, lng: state.lng },
+        { lat: otherState.lat, lng: otherState.lng }
+      );
+      const altDiff = Math.abs(state.alt - (otherState.alt ?? 50));
+      if (dist2D < 50 && altDiff < 10) {
+        const proximityMsg = `⚠️ PROXIMITY: ${droneId} ↔ ${otherId} | ${dist2D.toFixed(1)}m apart | ΔAlt: ${altDiff.toFixed(1)}m`;
+        logger.warn(`[SAFETY] ${proximityMsg}`);
+        io.emit("safety_alert", {
+          type:      "PROXIMITY",
+          droneId,
+          otherId,
+          distance:  +dist2D.toFixed(1),
+          altDiff:   +altDiff.toFixed(1),
+          message:   proximityMsg,
+        });
+        io.emit("event_log", { message: proximityMsg, type: "warning" });
+      }
+    }
+
+    // Store last known state for other drones' proximity checks
+    const missionState = activeMissions.get(droneId);
+    if (missionState) missionState.lastState = state;
+
     if (!divertedToCharge && battery < BATTERY_LOW_THRESHOLD) {
       divertedToCharge = true;
       clearInterval(ticker);
