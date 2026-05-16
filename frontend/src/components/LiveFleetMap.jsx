@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Polygon, Circle } from 'react-leaflet';
+import { motion } from 'framer-motion';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation } from 'lucide-react';
@@ -127,38 +128,14 @@ const LiveFleetMap = ({ drones = {}, gridData = [], warningDrones = new Set(), z
 
       </MapContainer>
 
-      {/* Altitude Legend (bottom-right) */}
-      <div className="absolute bottom-4 right-4 z-[1000]">
-        <AltitudeLegend drones={drones} compactMode={true} />
-      </div>
-
-      {/* Final Legend (matching screenshot style) */}
-      <div className="absolute bottom-4 left-4 z-[1000]" style={{
-        background: 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid #cbd5e1',
-        borderRadius: 8,
-        padding: '10px 12px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-        minWidth: 160
-      }}>
-        <div style={{ fontSize: 9, fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', marginBottom: 8, borderBottom: '1px solid #e2e8f0', paddingBottom: 4 }}>
-          Mission Legend
-        </div>
-        {[
-          { color: '#2563eb', label: 'OSM Road Path', sub: 'Primary' },
-          { color: '#7c3aed', label: 'Grid Fallback', sub: 'Detour' },
-          { color: '#ef4444', label: 'Restricted Zone', sub: 'NFZ' },
-          { color: '#16a34a', label: 'Open Space', sub: 'Safe' },
-          { color: '#eab308', label: 'Power Station', sub: 'Hub' },
-        ]?.map((item, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }} />
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#334155' }}>{item.label}</span>
-            <span style={{ fontSize: 7, color: '#94a3b8', marginLeft: 'auto', fontWeight: 600 }}>{item.sub}</span>
-          </div>
-        ))}
-      </div>
+      {/* Altitude Legend (bottom-right) — now shows full trail key and traffic banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute bottom-4 right-4 z-[1000]"
+      >
+        <AltitudeLegend drones={drones} />
+      </motion.div>
 
     </div>
   );
