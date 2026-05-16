@@ -12,11 +12,15 @@ import { io } from "../server.js";
 // ALTITUDE LAYER DEFINITIONS (meters)
 // ─────────────────────────────────────────────────────────────
 export const ALTITUDE_LAYERS = [
-  { id: "ALT-80",  altitude: 80,  label: "Layer 1 (Low)",    color: "blue"   },
-  { id: "ALT-130", altitude: 130, label: "Layer 2 (Mid)",    color: "green"  },
-  { id: "ALT-180", altitude: 180, label: "Layer 3 (High)",   color: "orange" },
-  { id: "ALT-230", altitude: 230, label: "Layer 4 (Very High)", color: "red"  },
-  { id: "ALT-280", altitude: 280, label: "Layer 5 (Max)",    color: "purple" },
+  { id: "ALT-80",  altitude: 80,  label: "Layer 1 (Low)",    color: "#3b82f6" },
+  { id: "ALT-130", altitude: 130, label: "Layer 2 (Mid)",    color: "#22c55e" },
+  { id: "ALT-180", altitude: 180, label: "Layer 3 (High)",   color: "#f97316" },
+  { id: "ALT-230", altitude: 230, label: "Layer 4 (Very High)", color: "#ef4444" },
+  { id: "ALT-280", altitude: 280, label: "Layer 5 (Upper)",  color: "#a855f7" },
+  { id: "ALT-330", altitude: 330, label: "Layer 6 (Sub-Strat)", color: "#ec4899" },
+  { id: "ALT-380", altitude: 380, label: "Layer 7 (Stratum)", color: "#06b6d4" },
+  { id: "ALT-430", altitude: 430, label: "Layer 8 (Ion)",    color: "#8b5cf6" },
+  { id: "ALT-480", altitude: 480, label: "Layer 9 (Max)",    color: "#1e293b" },
 ];
 
 // Minimum vertical separation between drones in the same horizontal vicinity
