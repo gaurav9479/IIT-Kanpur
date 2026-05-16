@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MetricsDashboard from './components/MetricsDashboard';
@@ -51,13 +52,16 @@ function App() {
   const { drones, alerts, eventLog, gridData, warningDrones, connected } = useSocket();
   // Live airspace zones — shared between dashboard map and control page
   const { zones } = useZones();
+  
+  // Toggle state for Event Log sidebar
+  const [showEventLog, setShowEventLog] = React.useState(false);
 
   return (
     <Router>
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header connected={connected} />
+          <Header connected={connected} showEventLog={showEventLog} setShowEventLog={setShowEventLog} />
           <div className="flex-1 flex min-h-0 overflow-hidden relative">
             <div className="flex-1 flex flex-col h-full overflow-hidden relative">
               <Routes>
@@ -88,7 +92,14 @@ function App() {
               </Routes>
             </div>
             {/* EventLogPanel receives the log from the shared hook */}
-            <EventLogPanel eventLog={eventLog} />
+            <AnimatePresence>
+              {showEventLog && (
+                <EventLogPanel 
+                  eventLog={eventLog} 
+                  onClose={() => setShowEventLog(false)} 
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

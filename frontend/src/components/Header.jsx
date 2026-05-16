@@ -1,16 +1,33 @@
 import React from 'react';
-import { Bell, User, Search } from 'lucide-react';
+import { Bell, User, Search, Terminal } from 'lucide-react';
 
-const Header = () => {
+const Header = ({ connected, showEventLog, setShowEventLog }) => {
   return (
     <header className="h-20 bg-white-pure border-b border-navy-900/5 px-8 flex items-center justify-between shadow-sm relative z-10">
-      <div className="relative w-96 group">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-600 group-focus-within:text-navy-900 transition-colors" size={18} />
-        <input 
-          type="text" 
-          placeholder="Lookup mission artifacts..."
-          className="w-full bg-white-soft border border-navy-700/10 rounded-2xl py-2.5 pl-12 pr-4 text-sm text-navy-900 placeholder:text-navy-600 focus:outline-none focus:border-navy-900/20 focus:bg-white transition-all shadow-sm"
-        />
+      <div className="flex items-center gap-4">
+        <div className="relative w-96 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-600 group-focus-within:text-navy-900 transition-colors" size={18} />
+          <input 
+            type="text" 
+            placeholder="Lookup mission artifacts..."
+            className="w-full bg-white-soft border border-navy-700/10 rounded-2xl py-2.5 pl-12 pr-4 text-sm text-navy-900 placeholder:text-navy-600 focus:outline-none focus:border-navy-900/20 focus:bg-white transition-all shadow-sm"
+          />
+        </div>
+
+        {/* Event Log Toggle Button */}
+        <button 
+          onClick={() => setShowEventLog(!showEventLog)}
+          className={`p-2.5 rounded-xl transition-all flex items-center gap-2 border ${
+            showEventLog 
+              ? 'bg-navy-900 text-white border-navy-900' 
+              : 'bg-white text-navy-600 border-navy-900/10 hover:bg-navy-900/5'
+          }`}
+          title="Toggle Event Log"
+        >
+          <Terminal size={18} />
+          <span className="text-[10px] font-black uppercase tracking-widest hidden lg:block">Event Log</span>
+          {showEventLog && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-1"></span>}
+        </button>
       </div>
 
       <div className="flex items-center gap-6">
