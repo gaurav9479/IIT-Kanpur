@@ -9,38 +9,15 @@ const ScenarioPanel = () => {
 
     const scenarios = [
         {
-            id: 'traffic',
-            name: 'High Traffic Density',
-            desc: 'Launch 8 units between all hubs with anti-collision lanes.',
-            icon: <Activity className="text-blue-500" size={18} />,
+            id: 'fleet_40',
+            name: 'Full Fleet Deployment (40 Drones)',
+            desc: 'Launch 40 simultaneous cross-campus missions to test swarm coordination and collision avoidance.',
+            icon: <Activity className="text-blue-600" size={18} fill="currentColor" />,
             color: 'from-blue-50/50 to-blue-100/50',
             border: 'border-blue-200'
-        },
-        {
-            id: 'altitude',
-            name: 'Altitude Traffic Conflict',
-            desc: '8 drones launched at identical altitudes — forced lane reassignment every 600ms.',
-            icon: <Activity className="text-purple-500" size={18} />,
-            color: 'from-purple-50/50 to-purple-100/50',
-            border: 'border-purple-200'
-        },
-        {
-            id: 'congestion',
-            name: 'Hub Rush Hour',
-            desc: 'Mass arrival at Hub Central to trigger grid density alerts.',
-            icon: <Zap className="text-amber-500" size={18} />,
-            color: 'from-amber-50/50 to-amber-100/50',
-            border: 'border-amber-200'
-        },
-        {
-            id: 'battery',
-            name: 'Critical Battery Failsafe',
-            desc: 'Long cross-campus mission with 35% battery — triggers Power Station divert.',
-            icon: <Zap className="text-orange-500" size={18} fill="currentColor" />,
-            color: 'from-orange-50/50 to-orange-100/50',
-            border: 'border-orange-200'
         }
     ];
+
 
     const runScenario = async (id) => {
         setLoading(id);
