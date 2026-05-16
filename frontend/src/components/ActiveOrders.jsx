@@ -68,7 +68,7 @@ const ActiveOrders = () => {
 
         <div className="flex bg-white p-2 rounded-2xl shadow-xl border border-navy-900/5 items-center gap-4">
           <div className="flex gap-1 bg-navy-900/5 p-1 rounded-xl">
-            {['all', 'pending', 'assigned', 'in-flight', 'delivered'].map((f) => (
+            {['all', 'pending', 'assigned', 'in-flight', 'delivered']?.map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -94,12 +94,12 @@ const ActiveOrders = () => {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
-          {[1, 2, 3, 4].map(i => <div key={i} className="h-48 bg-navy-900/5 rounded-3xl" />)}
+          {[1, 2, 3, 4]?.map(i => <div key={i} className="h-48 bg-navy-900/5 rounded-3xl" />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
-            {filteredOrders.map((order, index) => (
+            {filteredOrders?.map((order, index) => (
               <motion.div
                 layout
                 key={order._id}

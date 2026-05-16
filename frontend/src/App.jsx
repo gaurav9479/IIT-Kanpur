@@ -14,13 +14,15 @@ import MissionHistoryPage from './components/MissionHistoryPage';
 import FleetManagement from './components/FleetManagement';
 import ActiveOrders from './components/ActiveOrders';
 import AnalyticsPage from './components/AnalyticsPage';
-import SafetyZones from './components/SafetyZones';
+import AirspaceControlPage from './components/AirspaceControlPage';
 import SettingsPage from './components/SettingsPage';
 import AddFleetPage from './components/AddFleetPage';
 import ScenarioPanel from './components/ScenarioPanel';
+import AIPredictionPanel from './components/AIPredictionPanel';
 import { useSocket } from './hooks/useSocket';
+import { useZones } from './hooks/useZones';
 
-const DashboardOverview = ({ drones, alerts, gridData, warningDrones, connected }) => (
+const DashboardOverview = ({ drones, alerts, gridData, warningDrones, connected, zones }) => (
   <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
     {/* Connection status banner */}
     {!connected && (
@@ -31,8 +33,8 @@ const DashboardOverview = ({ drones, alerts, gridData, warningDrones, connected 
     <MetricsDashboard drones={drones} />
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <div className="lg:col-span-3 space-y-8">
-        {/* Map receives both drones and gridData */}
-        <LiveFleetMap drones={drones} gridData={gridData} warningDrones={warningDrones} />
+        {/* Map receives both drones, gridData, and live zones */}
+        <LiveFleetMap drones={drones} gridData={gridData} warningDrones={warningDrones} zones={zones} />
         <DroneGrid drones={Object.values(drones)} />
       </div>
       <div className="lg:col-span-1 space-y-8">
@@ -47,6 +49,8 @@ const DashboardOverview = ({ drones, alerts, gridData, warningDrones, connected 
 function App() {
   // All real-time state managed centrally in one hook
   const { drones, alerts, eventLog, gridData, warningDrones, connected } = useSocket();
+  // Live airspace zones — shared between dashboard map and control page
+  const { zones } = useZones();
 
   return (
     <Router>
@@ -59,13 +63,14 @@ function App() {
               <Routes>
                 <Route
                   path="/"
-                  element={
+                                element={
                     <DashboardOverview
                       drones={drones}
                       alerts={alerts}
                       gridData={gridData}
                       warningDrones={warningDrones}
                       connected={connected}
+                      zones={zones}
                     />
                   }
                 />
@@ -75,7 +80,8 @@ function App() {
                 <Route path="/fleet" element={<FleetManagement />} />
                 <Route path="/orders" element={<ActiveOrders />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/safety" element={<SafetyZones />} />
+                <Route path="/ai" element={<AIPredictionPanel />} />
+                <Route path="/safety" element={<AirspaceControlPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 {/* <Route path="/drone-sim" element={<DroneSimulationPage />} /> */} 
                 <Route path="/add-fleet" element={<AddFleetPage />} />
