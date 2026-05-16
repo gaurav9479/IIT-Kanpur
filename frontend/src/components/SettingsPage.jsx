@@ -52,7 +52,7 @@ const SettingsPage = () => {
               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">System Status: Optimal</p>
            </div>
            
-           {sections.map((s, i) => (
+           {sections?.map((s, i) => (
              <button key={i} className="w-full text-left p-4 rounded-xl flex items-center gap-4 hover:bg-navy-900 hover:text-white transition-all group">
                 <div className="p-2 bg-navy-900/5 group-hover:bg-white/10 rounded-lg">
                    <s.icon size={18} />
@@ -77,7 +77,7 @@ const SettingsPage = () => {
                    { label: 'Auto-Route Re-optimization', desc: 'Recalculate 3D trajectory every 500ms during delivery.' },
                    { label: 'Battery Reserve Buffer', desc: 'Trigger automatic return-to-base at 20% charge.' },
                    { label: 'Collision Mitigation Level', desc: 'AI confidence threshold for evasive maneuvers.' }
-                 ].map((s, i) => (
+                 ]?.map((s, i) => (
                    <div key={i} className="flex items-center justify-between p-6 bg-navy-900/5 rounded-2xl group hover:bg-navy-900/10 transition-colors">
                       <div className="max-w-md">
                          <h4 className="text-[11px] font-black uppercase tracking-widest text-navy-900 mb-1">{s.label}</h4>
