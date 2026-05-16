@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   MapContainer, TileLayer, Marker, Polyline,
-  Polygon, Tooltip, CircleMarker, useMapEvents
+  Polygon, Circle, Tooltip, CircleMarker, useMapEvents
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -16,7 +16,7 @@ import {
   ShieldAlert, Route, Loader2, Navigation
 } from 'lucide-react';
 import axios from 'axios';
-import CongestionOverlay from './CongestionOverlay';
+import SharedAirspaceMap from './SharedAirspaceMap';
 import {
   CAMPUS_NODES,
   CAMPUS_EDGES,
@@ -25,6 +25,23 @@ import {
   MAP_ZOOM,
   API_URL,
 } from '../config/mapConfig';
+import { useZones } from '../hooks/useZones';
+
+const ZONE_COLORS = {
+  NO_FLY:     { stroke: '#ef4444', fill: '#ef4444' },
+  RESTRICTED: { stroke: '#eab308', fill: '#eab308' },
+  PRIORITY:   { stroke: '#3b82f6', fill: '#3b82f6' },
+};
+
+function zoneGeomToPositions(geometry) {
+  if (!geometry) return null;
+  if (geometry.type === 'Circle') {
+    const [lng, lat] = geometry.coordinates[0];
+    return { center: [lat, lng], radius: geometry.radius || 100 };
+  }
+  const ring = geometry.coordinates[0] || [];
+  return (ring || [])?.map(([lng, lat]) => [lat, lng]);
+}
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -90,6 +107,7 @@ const MissionPlanner = () => {
   const [routePath,    setRoutePath]    = useState(null);
   const [routeStats,   setRouteStats]   = useState(null);
   const [clickMode,    setClickMode]    = useState(false); // map click mode
+  const { zones } = useZones();
 
   const handleMapClick = (latlng) => {
     if (!clickMode) return;
@@ -154,7 +172,7 @@ const MissionPlanner = () => {
   };
 
   const canDeploy = source && destination && !isDeploying && !isPreviewing;
-  const pathPositions = routePath ? routePath.map(p => [p.lat, p.lng]) : [];
+  const pathPositions = routePath ? routePath?.map(p => [p.lat, p.lng]) : [];
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white border-l border-navy-900/5 overflow-y-auto custom-scrollbar">
@@ -232,7 +250,7 @@ const MissionPlanner = () => {
             className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900"
           >
             <option value="">Select Source...</option>
-            {ALL_LOCATIONS.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+            {ALL_LOCATIONS?.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
           </select>
         </div>
 
@@ -247,7 +265,7 @@ const MissionPlanner = () => {
             className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900 disabled:opacity-50"
           >
             <option value="">Select Destination...</option>
-            {ALL_LOCATIONS.filter(d => d.name !== source?.name).map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+            {ALL_LOCATIONS?.filter(d => d.name !== source?.name)?.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
           </select>
         </div>
 
@@ -274,32 +292,9 @@ const MissionPlanner = () => {
         </div>
       )}
       <div className="flex-1 mx-8 mb-8 rounded-3xl overflow-hidden glass-card relative border border-navy-900/10 shadow-2xl">
-        <MapContainer center={MAP_CENTER} zoom={MAP_ZOOM} className="h-full w-full z-0">
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
-
+        <SharedAirspaceMap className="h-full w-full z-0" showCongestion>
           {/* Map click handler for picking source/dest */}
           <MapClickHandler onClick={handleMapClick} />
-
-          <CongestionOverlay />
-
-          {/* Campus road edges (light grey background) */}
-          {CAMPUS_EDGES.map((edge, i) => (
-            <Polyline key={`e-${i}`} positions={edge} pathOptions={{ color: '#94a3b8', weight: 1.5, opacity: 0.35 }} />
-          ))}
-
-          {/* No-Fly Zones (red) */}
-          {NO_FLY_ZONES.map((zone, i) => (
-            <Polygon key={`nfz-${i}`} positions={zone.positions}
-              pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 2, dashArray: '6,3' }}
-            >
-              <Tooltip sticky>
-                <div className="text-xs font-bold text-red-700 flex items-center gap-1">
-                  <ShieldAlert size={12} /> {zone.name} — No Drone Entry
-                </div>
-              </Tooltip>
-            </Polygon>
-          ))}
 
           {/* ═══ COMPUTED DRONE ROUTE ═══ */}
           {pathPositions.length >= 2 && (
@@ -339,11 +334,11 @@ const MissionPlanner = () => {
               </Tooltip>
             </Marker>
           )}
-        </MapContainer>
+        </SharedAirspaceMap>
 
         {/* Coordinate readout */}
         <div className="absolute bottom-4 left-4 z-10 space-y-2">
-          {[{ label: 'Source', item: source, icon: '🛫' }, { label: 'Destination', item: destination, icon: '🛬' }].map(({ label, item, icon }) => (
+          {([{ label: 'Source', item: source, icon: '🛫' }, { label: 'Destination', item: destination, icon: '🛬' }] || [])?.map(({ label, item, icon }) => (
             <div key={label} className="glass-card px-4 py-2 flex items-center gap-3 bg-white border border-navy-900/20 shadow-xl">
               <div className={`w-2.5 h-2.5 rounded-full ${item ? 'bg-navy-900' : 'bg-gray-300'}`} />
               <div>

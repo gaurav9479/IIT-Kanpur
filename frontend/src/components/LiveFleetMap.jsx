@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip, Polygon } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, Polygon, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation } from 'lucide-react';
@@ -9,14 +9,29 @@ import AltitudeLegend from './AltitudeLegend';
 import {
   MAP_CENTER, MAP_ZOOM,
   CAMPUS_NODES,
-  NO_FLY_ZONES,
   FLY_ZONE_COLORS,
 } from '../config/mapConfig';
 
+const ZONE_COLORS = {
+  NO_FLY:     { stroke: '#ef4444', fill: '#ef4444' },
+  RESTRICTED: { stroke: '#eab308', fill: '#eab308' },
+  PRIORITY:   { stroke: '#3b82f6', fill: '#3b82f6' },
+};
+
+function zoneGeomToPositions(geometry) {
+  if (!geometry) return null;
+  if (geometry.type === 'Circle') {
+    const [lng, lat] = geometry.coordinates[0];
+    return { center: [lat, lng], radius: geometry.radius || 100 };
+  }
+  const ring = geometry.coordinates[0] || [];
+  return ring?.map(([lng, lat]) => [lat, lng]);
+}
+
 /**
- * LiveFleetMap — 3-zone airspace visualisation
+ * LiveFleetMap — campus map with real-time drone positions + dynamic airspace zones
  */
-const LiveFleetMap = ({ drones = {}, gridData = [], warningDrones = new Set() }) => {
+const LiveFleetMap = ({ drones = {}, gridData = [], warningDrones = new Set(), zones = [] }) => {
   const dronesList = Object.values(drones);
 
   // Key nodes to label
@@ -56,40 +71,41 @@ const LiveFleetMap = ({ drones = {}, gridData = [], warningDrones = new Set() })
 
         <CongestionOverlay gridData={gridData} />
 
-        {/* ── 🟥 LAYER 3: No-Fly Zones (Circular + Exclusion) ── */}
-        {NO_FLY_ZONES.map((zone, idx) => {
-          const name = zone.name || `Zone-${idx}`;
-          const isExclusion = name.startsWith('Exclusion');
-          const c = isExclusion ? FLY_ZONE_COLORS.exclusion : FLY_ZONE_COLORS.restricted;
-          
-          return (
-            <Polygon
-              key={`nfz-${idx}`}
-              positions={zone.positions}
-              pathOptions={{
-                color:       c.stroke,
-                fillColor:   c.fill,
-                fillOpacity: isExclusion ? 0.07 : 0.18,
-                weight:      isExclusion ? 1.5 : 2,
-                dashArray:   isExclusion ? '5, 5' : null,
-              }}
-            >
-              <Tooltip sticky>
-                <div style={{ padding: '2px 4px' }}>
+        {/* Dynamic airspace zones from DB */}
+        {zones?.map((zone) => {
+          if (!zone.visible || !zone.geometry) return null;
+          const c = ZONE_COLORS[zone.type] || ZONE_COLORS.NO_FLY;
+          const pos = zoneGeomToPositions(zone.geometry);
+          if (!pos) return null;
+          const pathOpts = {
+            color: c.stroke, fillColor: c.fill, fillOpacity: 0.18,
+            weight: 2,
+            dashArray: zone.type === 'NO_FLY' ? '6 4' : zone.type === 'RESTRICTED' ? '4 4' : null,
+          };
+          if (zone.geometry.type === 'Circle') {
+            return (
+              <Circle key={zone.id} center={pos.center} radius={pos.radius} pathOptions={pathOpts}>
+                <Tooltip sticky>
                   <span style={{ fontSize: 10, fontWeight: 900, color: c.stroke }}>
-                    {isExclusion ? '🚧' : '🚫'} {name}
+                    {zone.type === 'NO_FLY' ? '🚫' : zone.type === 'RESTRICTED' ? '⚠️' : '✅'} {zone.name}
                   </span>
-                  {zone.radius_m && (
-                    <div style={{ fontSize: 8, color: '#64748b' }}>Radius: {zone.radius_m}m</div>
-                  )}
-                </div>
+                </Tooltip>
+              </Circle>
+            );
+          }
+          return (
+            <Polygon key={zone.id} positions={pos} pathOptions={pathOpts}>
+              <Tooltip sticky>
+                <span style={{ fontSize: 10, fontWeight: 900, color: c.stroke }}>
+                  {zone.type === 'NO_FLY' ? '🚫' : zone.type === 'RESTRICTED' ? '⚠️' : '✅'} {zone.name}
+                </span>
               </Tooltip>
             </Polygon>
           );
         })}
 
         {/* ── LAYER 4: Landmarks ── */}
-        {KEY_NODES.map(([name, coords]) => {
+        {KEY_NODES?.map(([name, coords]) => {
           const isHub = name.startsWith('Hub');
           const isPS = name === 'Power Station';
           
@@ -135,7 +151,7 @@ const LiveFleetMap = ({ drones = {}, gridData = [], warningDrones = new Set() })
           { color: '#ef4444', label: 'Restricted Zone', sub: 'NFZ' },
           { color: '#16a34a', label: 'Open Space', sub: 'Safe' },
           { color: '#eab308', label: 'Power Station', sub: 'Hub' },
-        ].map((item, i) => (
+        ]?.map((item, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
             <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, flexShrink: 0, border: '1px solid rgba(0,0,0,0.1)' }} />
             <span style={{ fontSize: 9, fontWeight: 700, color: '#334155' }}>{item.label}</span>
