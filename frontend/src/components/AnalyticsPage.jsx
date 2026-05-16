@@ -34,7 +34,7 @@ const AnalyticsPage = () => {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
+        {stats?.map((stat, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
@@ -74,7 +74,7 @@ const AnalyticsPage = () => {
           
           {/* Custom SVG Bar Chart Mockup */}
           <div className="flex-1 flex items-end justify-between gap-4 py-4">
-            {[40, 70, 45, 90, 65, 80, 55, 95, 40, 75, 85, 60].map((h, i) => (
+            {[40, 70, 45, 90, 65, 80, 55, 95, 40, 75, 85, 60]?.map((h, i) => (
               <div key={i} className="flex-1 flex flex-col gap-1 items-center">
                 <motion.div 
                   initial={{ height: 0 }}
