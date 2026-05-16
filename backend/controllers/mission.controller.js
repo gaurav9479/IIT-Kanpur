@@ -70,6 +70,25 @@ export const getMissionById = asyncHandler(async (req, res, next) => {
  * Returns computed waypoints WITHOUT creating a mission or assigning a drone.
  * Used by the MissionPlanner map to preview the real graph path.
  */
+// Helper to find nearest hub for preview
+const HUB_COORDS = [
+  { name: "Hub North", lat: 26.5200, lng: 80.2320 },
+  { name: "Hub South", lat: 26.5088, lng: 80.2330 },
+  { name: "Hub East",  lat: 26.5148, lng: 80.2392 },
+  { name: "Hub West",  lat: 26.5148, lng: 80.2248 },
+  { name: "Hub Central", lat: 26.5140, lng: 80.2318 }
+];
+
+const findNearestHub = (loc) => {
+  let nearest = HUB_COORDS[4]; // Default to Central
+  let minDist = Infinity;
+  HUB_COORDS.forEach(h => {
+    const d = Math.sqrt((h.lat - loc.lat)**2 + (h.lng - loc.lng)**2);
+    if (d < minDist) { minDist = d; nearest = h; }
+  });
+  return nearest;
+};
+
 export const previewRoute = asyncHandler(async (req, res) => {
   const { pickupLocation, dropLocation } = req.body;
 
@@ -77,23 +96,43 @@ export const previewRoute = asyncHandler(async (req, res) => {
     throw new ApiError(400, "pickupLocation and dropLocation are required");
   }
 
-  const navData = await navigationService.get3DRoute(
-    pickupLocation,
-    dropLocation,
-    { droneId: "PREVIEW" }
-  );
+  // Find nearest hub to pickup for a realistic preview
+  const hubLocation = findNearestHub(pickupLocation);
 
-  if (!navData || !navData.path) {
-    throw new ApiError(422, "No valid path found between the selected nodes");
+
+  try {
+    const navData = await navigationService.getFullMissionPath(
+      hubLocation,
+      pickupLocation,
+      dropLocation,
+      { droneId: "PREVIEW" }
+    );
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        path: navData.path,
+        distance: navData.distance,
+        source: navData.source || "astar-grid-lifecycle",
+        waypoints: navData.path.length,
+      }, "Full mission lifecycle preview computed")
+    );
+  } catch (error) {
+    // Fallback to simple Pickup -> Drop if full lifecycle fails
+    const navData = await navigationService.get3DRoute(
+      pickupLocation,
+      dropLocation,
+      { droneId: "PREVIEW" }
+    );
+    
+    return res.status(200).json(
+      new ApiResponse(200, {
+        path: navData.path,
+        distance: navData.distance,
+        source: navData.source || "astar-grid",
+        waypoints: navData.path.length,
+        warning: "Hub-to-Pickup leg blocked; showing Pickup-to-Drop only."
+      }, "Limited preview computed")
+    );
   }
-
-  return res.status(200).json(
-    new ApiResponse(200, {
-      path: navData.path,
-      distance: navData.distance,
-      source: navData.source || "graph-stitched",
-      waypoints: navData.path.length,
-    }, "Route preview computed successfully")
-  );
 });
 
