@@ -16,7 +16,7 @@ const DroneSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["idle", "delivering", "charging", "grounded"],
+    enum: ["idle", "delivering", "charging", "grounded", "picking up", "delivered"],
     default: "idle"
   },
   payloadCapacity: {
@@ -30,13 +30,18 @@ const DroneSchema = new mongoose.Schema({
   },
   operatingAltitude: {
     type: Number,
-    min: 20,
-    max: 120,
-    default: 50
+    min: 80,
+    max: 300,
+    default: 80
   },
   location: {
     lat: { type: Number, default: 0 },
     lng: { type: Number, default: 0 }
+  },
+  homeHub: {
+    name: { type: String, default: 'Hub Central' },
+    lat:  { type: Number, default: 26.5140 },
+    lng:  { type: Number, default: 80.2318 },
   }
 }, { timestamps: true })
 

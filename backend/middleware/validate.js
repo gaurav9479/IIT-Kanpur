@@ -10,9 +10,7 @@ const validate = (schema) => (req, res, next) => {
         next();
     } catch (error) {
         // Detailed Zod error formatting
-        const errorMessage = error.errors
-            .map((err) => `${err.path.join(".")}: ${err.message}`)
-            .join(" | ");
+        const errorMessage = error.errors?.map((err) => `${err.path.join(".")}: ${err.message}`).join(" | ") || error.message;
             
         throw new ApiError(400, `Schema Validation Failed: ${errorMessage}`);
     }
