@@ -36,35 +36,37 @@ class MissionService {
         }
         logger.info(`[MissionService] Selected Drone: ${drone.droneId}, Capacity: ${drone.payloadCapacity}`);
 
-        // Plan 3D Trajectory
-        const congestionScores = gridOccupancyService.getCongestionData();
-        logger.info(`[MissionService] Planning 3D trajectory...`);
+        // Plan 3D Trajectory — FULL LIFECYCLE (Hub -> Pickup -> Drop -> Hub)
+        const hubLocation = {
+            lat: drone.homeHub?.lat || 26.5140,
+            lng: drone.homeHub?.lng || 80.2318
+        };
+
+        
         let navData;
         try {
-            navData = await navigationService.get3DRoute(
+            navData = await navigationService.getFullMissionPath(
+                hubLocation,
                 pickupLocation,
                 dropLocation,
                 {
                     droneId: drone.droneId,
-                    congestionScores,
                     operatingAltitude: drone.operatingAltitude
                 }
             );
 
             if (!navData || !navData.path) {
-                logger.error(`[MissionService] Navigation failed: No path found`);
-                throw new Error("Route planning failed: No valid path found between points");
+                logger.error(`[MissionService] Lifecycle planning failed`);
+                throw new Error("Full lifecycle planning failed.");
             }
         } catch (error) {
-            if (error.message === "NO_GRAPH_PATH") {
-                throw new Error("NO_GRAPH_PATH");
-            }
+            logger.error(`[MissionService] Nav Error: ${error.message}`);
             throw error;
         }
 
-        const { path, distance, lane, slotIndex, source: routeSource } = navData;
+        const { path, distance, source: routeSource } = navData;
         const validDistance = Number(distance) || 0;
-        logger.info(`[MissionService] Route planned: ${validDistance}m, Lane: ${lane}, Method: ${routeSource}`);
+        logger.info(`[MissionService] Lifecycle planned: ${validDistance.toFixed(0)}m total mission distance.`);
 
         // Request Takeoff
         await collisionService.requestTakeoff(drone.droneId, order.hubId || "HUB-01");
@@ -110,8 +112,8 @@ class MissionService {
                 batteryAfter: isNaN(batteryAfter) ? drone.batteryLevel : batteryAfter,
                 totalDistance: validDistance,
                 trajectoryData: path,
-                lane,
-                slotIndex
+                lane: navData.lane || "L1",
+                slotIndex: navData.slotIndex || 0
             });
         } catch (error) {
             logger.error(`[MissionService] Mission.create failed: ${error.message}`);
