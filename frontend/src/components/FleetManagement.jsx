@@ -16,6 +16,16 @@ import {
 import { useSocket } from '../hooks/useSocket';
 import axios from 'axios';
 import { API_URL } from '../config/mapConfig';
+import AltitudeLegend from './AltitudeLegend';
+
+const getAltColor = (alt) => {
+  if (alt <= 80) return '#3b82f6';
+  if (alt <= 130) return '#22c55e';
+  if (alt <= 180) return '#f97316';
+  if (alt <= 230) return '#ef4444';
+  return '#a855f7';
+};
+
 
 const FleetManagement = () => {
   const navigate = useNavigate();
@@ -25,7 +35,7 @@ const FleetManagement = () => {
   const stats = useMemo(() => {
     return {
       total: droneList.length,
-      active: droneList.filter(d => d.status === 'delivering').length,
+      active: droneList.filter(d => ['delivering', 'picking up', 'delivered'].includes(d.status)).length,
       idle: droneList.filter(d => d.status === 'idle').length,
       grounded: droneList.filter(d => d.status === 'grounded').length,
       lowBattery: droneList.filter(d => d.batteryLevel < 25).length
@@ -83,7 +93,7 @@ const FleetManagement = () => {
           { label: 'In-Flight', value: stats.active, color: 'sky' },
           { label: 'Ready/Idle', value: stats.idle, color: 'emerald' },
           { label: 'Grounded', value: stats.grounded, color: 'rose' }
-        ].map((stat, i) => (
+        ]?.map((stat, i) => (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -97,10 +107,15 @@ const FleetManagement = () => {
         ))}
       </div>
 
+      <div className="bg-white/50 backdrop-blur-xl border border-navy-900/10 rounded-3xl p-6">
+        <AltitudeLegend drones={drones} compactMode={false} />
+      </div>
+
       {/* Drones Grid */}
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
         <AnimatePresence>
-          {droneList.map((drone) => (
+          {droneList?.map((drone) => (
             <motion.div
               layout
               key={drone.droneId}
@@ -109,19 +124,17 @@ const FleetManagement = () => {
               exit={{ opacity: 0, scale: 0.9 }}
               className="glass-card relative overflow-hidden group border border-navy-900/5 hover:border-navy-900/20 transition-all duration-500"
             >
-              {/* Status Indicator Bar */}
-              <div className={`absolute top-0 left-0 right-0 h-1 ${
-                drone.status === 'delivering' ? 'bg-sky-500' :
-                drone.status === 'grounded' ? 'bg-red-600' :
-                drone.status === 'maintenance' ? 'bg-amber-500' : 'bg-emerald-500'
-              }`} />
+              {/* Status/Altitude Indicator Bar */}
+              <div className="absolute top-0 left-0 right-0 h-1.5" style={{ background: getAltColor(drone.operatingAltitude ?? 80) }} />
+
 
               <div className="p-6">
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 bg-navy-900 text-white rounded-2xl shadow-xl shadow-navy-900/20 group-hover:rotate-12 transition-transform duration-500">
+                    <div className="p-3 text-white rounded-2xl shadow-xl group-hover:rotate-12 transition-transform duration-500" style={{ background: getAltColor(drone.operatingAltitude ?? 80) }}>
                       <Plane size={24} />
                     </div>
+
                     <div>
                       <h3 className="font-sora font-black text-lg tracking-tighter text-navy-900 italic italic">
                         {drone.droneId}
@@ -131,11 +144,18 @@ const FleetManagement = () => {
                   </div>
                   <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
                     drone.status === 'delivering' ? 'bg-sky-500/10 text-sky-600' :
-                    drone.status === 'idle' ? 'bg-emerald-500/10 text-emerald-600' : 
+                    drone.status === 'picking up' ? 'bg-amber-500/10 text-amber-600' :
+                    drone.status === 'delivered' ? 'bg-emerald-500/10 text-emerald-600' :
+                    drone.status === 'idle' ? 'bg-slate-500/10 text-slate-600' : 
                     drone.status === 'grounded' ? 'bg-red-600/10 text-red-600' :
                     'bg-amber-500/10 text-amber-600'
                   }`}>
-                    {drone.status === 'delivering' ? 'ONLINE' : drone.status === 'idle' ? 'STANDBY' : drone.status === 'grounded' ? 'GROUNDED' : drone.status}
+                    {drone.status === 'delivering' ? 'DELIVERING' : 
+                     drone.status === 'picking up' ? 'PICKING UP' :
+                     drone.status === 'delivered' ? 'DELIVERED' :
+                     drone.status === 'idle' ? 'STANDBY' : 
+                     drone.status === 'grounded' ? 'GROUNDED' : 
+                     drone.status?.toUpperCase()}
                   </div>
                 </div>
 

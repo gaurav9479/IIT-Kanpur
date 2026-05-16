@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import L from 'leaflet';
-import { Search, Package, Navigation, CheckCircle2, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Search, Package, Navigation, CheckCircle2, Clock, AlertCircle, MapPin } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { SOCKET_URL, API_URL } from '../config/mapConfig';
+import SharedAirspaceMap from './SharedAirspaceMap';
+import { Marker, Polyline } from 'react-leaflet';
+
 
 const OrderTracking = () => {
   const { orderId: urlOrderId } = useParams();
@@ -17,7 +20,14 @@ const OrderTracking = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const stages = ['pending', 'assigned', 'delivering', 'delivered'];
+  const stages = ['pending', 'assigned', 'picked', 'in-flight', 'delivered'];
+  const stageLabels = {
+    'pending': 'Pending',
+    'assigned': 'Assigned',
+    'picked': 'Picked Up',
+    'in-flight': 'Delivering',
+    'delivered': 'Delivered'
+  };
 
   useEffect(() => {
     if (urlOrderId) {
@@ -26,7 +36,7 @@ const OrderTracking = () => {
   }, [urlOrderId]);
 
   useEffect(() => {
-    if (order?.assignedDrone?.droneId && order.status === 'delivering') {
+    if (order?.assignedDrone?.droneId && ['assigned', 'picked', 'in-flight', 'delivered'].includes(order.status)) {
       const socket = io(SOCKET_URL);
       
       socket.on(`drone_update_${order.assignedDrone.droneId}`, (data) => {
@@ -161,17 +171,17 @@ const OrderTracking = () => {
                   
                   {stages.map((stage, i) => {
                     const isActive = getStatusIndex(order.status) >= i;
-                    const Icon = i === 0 ? Clock : i === 1 ? Package : i === 2 ? Navigation : CheckCircle2;
+                    const Icon = i === 0 ? Clock : i === 1 ? Package : i === 2 ? Navigation : i === 3 ? Navigation : CheckCircle2;
                     return (
                       <div key={stage} className="relative z-10 flex flex-col items-center">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-colors duration-500 ${
                           isActive ? 'bg-navy-900 border-navy-900 text-white' : 'bg-white border-white-muted text-navy-600'
                         }`}>
-                          <Icon size={20} />
+                          <Icon size={20} className={i === 3 ? 'rotate-45' : ''} />
                         </div>
                         <p className={`absolute -bottom-8 text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${
                           isActive ? 'text-navy-900' : 'text-navy-600 opacity-50'
-                        }`}>{stage}</p>
+                        }`}>{stageLabels[stage] || stage}</p>
                       </div>
                     );
                   })}
@@ -180,13 +190,8 @@ const OrderTracking = () => {
 
               {/* Map Section */}
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <div className="lg:col-span-3 h-[400px] rounded-3xl overflow-hidden glass-card border border-navy-900/10 shadow-2xl relative">
-                  <MapContainer 
-                    center={[order.pickupLocation.lat, order.pickupLocation.lng]} 
-                    zoom={15} 
-                    className="h-full w-full"
-                  >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <div className="lg:col-span-3 h-[450px] rounded-3xl overflow-hidden glass-card border border-navy-900/10 shadow-2xl relative">
+                  <SharedAirspaceMap showDrones={true}>
                     <Marker position={[order.pickupLocation.lat, order.pickupLocation.lng]} />
                     <Marker position={[order.dropLocation.lat, order.dropLocation.lng]} />
                     <Polyline positions={[
@@ -200,8 +205,9 @@ const OrderTracking = () => {
                             icon={droneIcon}
                         />
                     )}
-                  </MapContainer>
+                  </SharedAirspaceMap>
                 </div>
+
                 <div className="lg:col-span-1 space-y-6">
                   <div className="glass-card p-6">
                     <h4 className="text-xs font-black text-navy-900 uppercase tracking-[0.2em] mb-4">Origin Node</h4>
