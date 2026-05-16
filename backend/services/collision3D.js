@@ -101,15 +101,32 @@ function getViolatedNFZ(location) {
 async function resolveByAltitudeChange(droneA, droneB) {
   // Higher droneId backs off (deterministic ordering)
   const resolver = droneA.droneId > droneB.droneId ? droneA : droneB;
-  const newAlt = altitudeManager.escalateLayer(resolver.droneId);
+  const other = resolver === droneA ? droneB : droneA;
+
+  // Try escalating the resolver
+  let newAlt = altitudeManager.escalateLayer(resolver.droneId);
 
   if (newAlt !== null) {
     await Drone.updateOne({ droneId: resolver.droneId }, { altitude: newAlt });
-    logger.info(`[3D-COL] Altitude resolution: ${resolver.droneId} → ${newAlt}m`);
+    logger.info(`[3D-COL] Resolution (Escalation): ${resolver.droneId} → ${newAlt}m`);
     return { action: "altitude_change", droneId: resolver.droneId, newAltitude: newAlt };
   }
 
-  return null; // escalation failed → try next resolution
+  // If escalation failed (at max alt), try descending the other drone
+  const currentIndexOther = altitudeManager.ALTITUDE_LAYERS.findIndex(l => l.altitude === (other.altitude ?? 50));
+  if (currentIndexOther > 0) {
+    const prevLayer = altitudeManager.ALTITUDE_LAYERS[currentIndexOther - 1];
+    
+    // Check if descent would still cause a conflict with original resolver's current alt
+    if (Math.abs(prevLayer.altitude - (resolver.altitude ?? 50)) >= altitudeManager.VERTICAL_SEPARATION_M) {
+        altitudeManager.releaseLayer(other.droneId);
+        await Drone.updateOne({ droneId: other.droneId }, { altitude: prevLayer.altitude });
+        logger.info(`[3D-COL] Resolution (Descent): ${other.droneId} ↓ ${prevLayer.altitude}m`);
+        return { action: "altitude_change", droneId: other.droneId, newAltitude: prevLayer.altitude };
+    }
+  }
+
+  return null; // Both options failed
 }
 
 /**

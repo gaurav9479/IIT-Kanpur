@@ -176,7 +176,7 @@ class NavigationService {
                     return { 
                         lat: node.lat, 
                         lng: node.lng, 
-                        z: 50,
+                        z: 80,
                         nodeId,
                         nodeName: node.name
                     };
@@ -324,7 +324,7 @@ class NavigationService {
 
                 return smoothed.map(([r, c]) => {
                     const ll = toLatLng(r, c);
-                    return { lat: ll.lat, lng: ll.lng, z: 50 };
+                    return { lat: ll.lat, lng: ll.lng };
                 });
             }
 
@@ -365,6 +365,7 @@ class NavigationService {
 
     async get3DRoute(start, end, options = {}) {
         const droneId = options.droneId;
+        let altitude = options.operatingAltitude || 80;
         const astarPath = this.findAStarRoute(start, end);
 
         if (!astarPath || astarPath.length < 2) {
@@ -374,7 +375,9 @@ class NavigationService {
 
         const slotIndex = getTimeSlot(Date.now());
         const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
-        const altitude = options.operatingAltitude || (lane ? lane.altitude : 80);
+        if (lane) {
+            altitude = options.operatingAltitude || lane.altitude;
+        }
 
         if (lane) {
             reserveSlot(lane.id, slotIndex, droneId);
