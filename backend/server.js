@@ -12,7 +12,6 @@ import logger from "./utils/logger.js";
 
 import connectDB from "./config/db.js";
 
-
 import droneRoutes from "./routes/drone.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import telemetryRoutes from "./routes/telemetry.routes.js";
@@ -22,41 +21,52 @@ import collisionRoutes from "./routes/collision.routes.js";
 import navigationRoutes from "./routes/navigation.routes.js";
 import missionRoutes from "./routes/mission.routes.js";
 import scenarioRoutes from "./routes/scenario.routes.js";
+import zoneRoutes from "./routes/zone.routes.js";
 import collisionService from "./services/collision.service.js";
 import collision3D from "./services/collision3D.js";
-
+import zoneService from "./services/zone.service.js";
 
 const app = express();
 const httpServer = createServer(app);
+
+// ✅ FIXED SOCKET.IO CORS (ALLOW MOBILE)
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5001", "http://127.0.0.1:5001"],
+    origin: "*", // allow all (dev mode)
     methods: ["GET", "POST"],
-    credentials: true
   },
 });
 
-
+// ✅ MIDDLEWARES
 app.use(correlationIdMiddleware);
-app.use(cors());
+
+// ✅ FIXED CORS FOR API
+app.use(
+  cors({
+    origin: "*", // allow mobile + localhost
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(morgan("dev"));
 
+// ✅ RATE LIMIT
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: 10000,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: {
     status: 429,
-    message: "Too many requests from this IP, please try again after 15 minutes"
-  }
+    message: "Too many requests. Try again later.",
+  },
 });
 
 app.use(limiter);
 
-
+// ✅ ROUTES
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/drones", droneRoutes);
 app.use("/api/v1/orders", orderRoutes);
@@ -66,22 +76,27 @@ app.use("/api/v1/safety", collisionRoutes);
 app.use("/api/v1/navigation", navigationRoutes);
 app.use("/api/v1/missions", missionRoutes);
 app.use("/api/v1/scenarios", scenarioRoutes);
+app.use("/api/v1/zones", zoneRoutes);
 
-// Global Error Handler
+// ✅ HEALTH CHECK
+app.get("/", (req, res) => {
+  res.send("Drone Delivery API is running...");
+});
+
+// ✅ GLOBAL ERROR HANDLER
 import ApiError from "./utils/ApiError.js";
 app.use((err, req, res, next) => {
   let statusCode = err.statusCode || (err instanceof ApiError ? err.statusCode : 500);
   let message = err.message || "Internal Server Error";
-  
-  // Handle MongoDB Duplicate Key Error
+
   if (err.code === 11000) {
-    statusCode = 409; // Conflict
+    statusCode = 409;
     const field = Object.keys(err.keyValue)[0];
-    message = `Duplicate ${field} detected. Please use a unique value.`;
+    message = `Duplicate ${field} detected.`;
   }
 
-  logger.error(`[Error] ${statusCode} - ${message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-  
+  logger.error(`[Error] ${statusCode} - ${message}`);
+
   res.status(statusCode).json({
     success: false,
     statusCode,
@@ -91,22 +106,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-connectDB().then(() => {
-  collisionService.startMonitoring();
-  collision3D.startMonitoring3D();
-});
-
-app.get("/", (req, res) => {
-  res.send("Drone Delivery API is running...");
-});
-
-
+// ✅ SOCKET.IO
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on("join_admin", () => {
     socket.join("admin_dashboard");
-    console.log("Socket joined admin_dashboard");
+    console.log("Joined admin_dashboard");
   });
 
   socket.on("disconnect", () => {
@@ -114,10 +120,19 @@ io.on("connection", (socket) => {
   });
 });
 
+// ✅ CONNECT DB + SERVICES
+connectDB().then(async () => {
+  // Initialise zone service first — safety + navigation depend on its cache
+  await zoneService.init(io);
+  collisionService.startMonitoring();
+  collision3D.startMonitoring3D();
+});
+
+// ✅ IMPORTANT FIX: LISTEN ON 0.0.0.0
 const PORT = process.env.PORT || 5001;
 
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });
 
 export { io };

@@ -14,7 +14,7 @@ const diagnose = async () => {
     const idleDrones = await Drone.find({ status: "idle" });
     console.log(`Found ${idleDrones.length} idle drones.`);
     if (idleDrones.length > 0) {
-      idleDrones.forEach(d => console.log(` - ${d.droneId}: Status=${d.status}, Battery=${d.batteryLevel}%, Capacity=${d.payloadCapacity}kg`));
+      idleDrones.forEach(d => console.log(` - ${d.droneId}: Hub=${d.homeHub?.name || 'Unknown'}, Status=${d.status}, Alt=${d.operatingAltitude}m`));
     } else {
         const allDrones = await Drone.find();
         console.log(`Total drones in DB: ${allDrones.length}`);
