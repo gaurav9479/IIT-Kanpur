@@ -22,6 +22,7 @@ import navigationRoutes from "./routes/navigation.routes.js";
 import missionRoutes from "./routes/mission.routes.js";
 import scenarioRoutes from "./routes/scenario.routes.js";
 import zoneRoutes from "./routes/zone.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import collisionService from "./services/collision.service.js";
 import collision3D from "./services/collision3D.js";
 import zoneService from "./services/zone.service.js";
@@ -77,6 +78,7 @@ app.use("/api/v1/navigation", navigationRoutes);
 app.use("/api/v1/missions", missionRoutes);
 app.use("/api/v1/scenarios", scenarioRoutes);
 app.use("/api/v1/zones", zoneRoutes);
+app.use("/api/v1/ai", aiRoutes);
 
 // ✅ HEALTH CHECK
 app.get("/", (req, res) => {
