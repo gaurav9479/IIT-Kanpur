@@ -5,10 +5,22 @@ const DroneCard = ({ drone }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'delivering': return 'text-emerald-400 bg-emerald-400/10 border-emerald-500/20';
-      case 'avoidance': return 'text-amber-400 bg-amber-400/10 border-amber-500/20';
-      case 'charging': return 'text-sky-400 bg-sky-400/10 border-sky-500/20';
-      default: return 'text-slate-400 bg-slate-400/10 border-slate-500/20';
+      case 'picking up': return 'text-amber-400 bg-amber-400/10 border-amber-500/20';
+      case 'delivered':  return 'text-sky-400 bg-sky-400/10 border-sky-500/20';
+      case 'avoidance':  return 'text-amber-400 bg-amber-400/10 border-amber-500/20';
+      case 'charging':   return 'text-sky-400 bg-sky-400/10 border-sky-500/20';
+      case 'returning':  return 'text-teal-400 bg-teal-400/10 border-teal-500/20';
+      default:           return 'text-slate-400 bg-slate-400/10 border-slate-500/20';
     }
+  };
+
+  const getStatusLabel = (status) => {
+    if (status === 'returning')  return '🏠 RETURNING';
+    if (status === 'charging')   return '⚡ CHARGING';
+    if (status === 'delivering')  return '📦 DELIVERING';
+    if (status === 'picking up') return '🎁 PICKING UP';
+    if (status === 'delivered')  return '✅ DELIVERED';
+    return (status || 'OFFLINE').toUpperCase();
   };
 
   return (
@@ -21,7 +33,7 @@ const DroneCard = ({ drone }) => {
           <div>
             <h3 className="text-white font-black tracking-tight uppercase text-xs">{drone.droneId}</h3>
             <span className={`text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded-full border mt-1 inline-block ${getStatusColor(drone.status)}`}>
-              {drone.status || 'OFFLINE'}
+              {getStatusLabel(drone.status)}
             </span>
           </div>
         </div>
@@ -100,7 +112,7 @@ const DroneGrid = ({ drones }) => {
         </h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {drones.map((drone) => (
+        {drones?.map((drone) => (
           <DroneCard key={drone.droneId} drone={drone} />
         ))}
         {drones.length === 0 && (

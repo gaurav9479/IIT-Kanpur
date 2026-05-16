@@ -9,7 +9,7 @@ import { Terminal, Info, AlertTriangle, XCircle, Clock } from 'lucide-react';
  */
 const EventLogPanel = ({ eventLog = [] }) => {
   // Map the eventLog prop to local display format
-  const logs = eventLog.map((entry, i) => ({
+  const logs = eventLog?.map((entry, i) => ({
     id: entry.timestamp + i,
     timestamp: entry.timestamp
       ? new Date(entry.timestamp).toLocaleTimeString([], { hour12: false })
@@ -80,7 +80,7 @@ const EventLogPanel = ({ eventLog = [] }) => {
         className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-navy-900/30"
       >
         <AnimatePresence initial={false}>
-          {logs.map((log) => {
+          {logs?.map((log) => {
             const styles = getTypeStyles(log.type);
             return (
               <motion.div
