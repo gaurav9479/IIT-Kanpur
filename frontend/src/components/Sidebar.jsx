@@ -13,7 +13,8 @@ import {
   LogOut,
   PlusCircle,
   ChevronRight,
-  Wifi
+  Wifi,
+  Brain
 } from 'lucide-react';
 
 // ── Nav Sections ──────────────────────────────────────────────
@@ -37,8 +38,9 @@ const sections = [
   {
     label: "Intelligence",
     items: [
-      { icon: BarChart3,      label: 'Analytics',        path: '/analytics', badge: null },
-      { icon: ShieldAlert,    label: 'Safety Zones',     path: '/safety',    badge: null },
+      { icon: BarChart3,      label: 'Analytics',          path: '/analytics', badge: null },
+      { icon: Brain,          label: 'AI Models',          path: '/ai',        badge: 'ML' },
+      { icon: ShieldAlert,    label: 'Airspace Control',   path: '/safety',    badge: 'Live' },
     ]
   },
   {
@@ -85,13 +87,13 @@ const Sidebar = () => {
 
       {/* ── Nav Sections ── */}
       <nav className="flex-1 px-3 overflow-y-auto custom-scrollbar space-y-5 pb-4">
-        {sections.map((section) => (
+        {sections?.map((section) => (
           <div key={section.label}>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-navy-400 px-3 mb-2">
               {section.label}
             </p>
             <div className="space-y-0.5">
-              {section.items.map((item) => {
+              {section.items?.map((item) => {
                 const isActive = location.pathname === item.path;
                 const isHovered = hovered === item.path;
 
