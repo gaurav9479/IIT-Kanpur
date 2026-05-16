@@ -15,12 +15,12 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
+import { SOCKET_URL } from "../config/mapConfig";
 import {
   Gauge, Zap, Clock, Navigation, AlertTriangle,
   Wind, Activity, Radio, TrendingUp,
 } from "lucide-react";
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
 const MAX_EVENTS = 30;
 const MAX_DECISIONS = 15;
 
