@@ -4,12 +4,14 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 
 export const createDrone = asyncHandler(async (req, res) => {
-  const { droneId, vehicleType, payloadCapacity, operatingAltitude } = req.body;
+  const { droneId, vehicleType, payloadCapacity, operatingAltitude, homeHub, location } = req.body;
   const drone = await droneService.createDrone({
     droneId,
     vehicleType,
     payloadCapacity,
     operatingAltitude,
+    homeHub,
+    location,
     status: "idle",
     batteryLevel: 100
   });

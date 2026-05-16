@@ -168,17 +168,13 @@ export const TELEMETRY_TIMEOUT_MS = 30000;
 // ===== MEMBER 2 — Navigation & ATC Config =====
 
 export const ALTITUDE_LANES = [
-    { id: "L1", altitude: 20, direction: "NORTH_SOUTH" },
-    { id: "L2", altitude: 30, direction: "EAST_WEST" },
-    { id: "L3", altitude: 40, direction: "NORTH_SOUTH" },
-    { id: "L4", altitude: 50, direction: "EAST_WEST" },
-    { id: "L5", altitude: 60, direction: "NORTH_SOUTH" },
-    { id: "L6", altitude: 70, direction: "EAST_WEST" },
-    { id: "L7", altitude: 80, direction: "NORTH_SOUTH" },
-    { id: "L8", altitude: 90, direction: "EAST_WEST" },
-    { id: "L9", altitude: 100, direction: "NORTH_SOUTH" },
-    { id: "L10", altitude: 110, direction: "EAST_WEST" },
+    { id: "L1", altitude: 80,  direction: "NORTH_SOUTH" },
+    { id: "L2", altitude: 130, direction: "EAST_WEST" },
+    { id: "L3", altitude: 180, direction: "NORTH_SOUTH" },
+    { id: "L4", altitude: 230, direction: "EAST_WEST" },
+    { id: "L5", altitude: 280, direction: "NORTH_SOUTH" },
 ];
+
 
 export const VERTICAL_BUFFER_M = 10;
 export const TIME_SLOT_DURATION_S = 300; // 5 minutes
