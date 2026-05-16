@@ -42,7 +42,7 @@ export function useAIPredictions() {
   const fetchLaneStatus = useCallback(async () => {
     setLaneLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/ai/lanes`, { timeout: 5000 });
+      const res = await axios.get(`${API_URL}/ai/lanes`, { timeout: 60000 });
       if (res.data?.lanes) {
         setLanes(res.data.lanes.map(l => ({
           ...l,
@@ -62,7 +62,7 @@ export function useAIPredictions() {
   // ── Health check ─────────────────────────────────────────────────────────
   const checkHealth = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/ai/health`, { timeout: 3000 });
+      const res = await axios.get(`${API_URL}/ai/health`, { timeout: 10000 });
       setAiOnline(true);
       setAiHealth(res.data);
     } catch {
