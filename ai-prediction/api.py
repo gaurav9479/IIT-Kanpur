@@ -102,7 +102,7 @@ async def health():
 
 
 @app.post("/predict/congestion")
-async def congestion_endpoint(req: CongestionInput):
+def congestion_endpoint(req: CongestionInput):
     COUNTER["congestion"] += 1
     try:
         result = predict_congestion(
@@ -126,7 +126,7 @@ async def congestion_endpoint(req: CongestionInput):
 
 
 @app.post("/predict/congestion/batch")
-async def congestion_batch_endpoint(req_list: list[CongestionInput]):
+def congestion_batch_endpoint(req_list: list[CongestionInput]):
     COUNTER["congestion"] += len(req_list)
     results = []
     try:
@@ -152,7 +152,7 @@ async def congestion_batch_endpoint(req_list: list[CongestionInput]):
 
 
 @app.post("/predict/eta")
-async def eta_endpoint(req: ETAInput):
+def eta_endpoint(req: ETAInput):
     COUNTER["eta"] += 1
     try:
         result = predict_eta(
@@ -175,7 +175,7 @@ async def eta_endpoint(req: ETAInput):
 
 
 @app.post("/predict/battery")
-async def battery_endpoint(req: BatteryInput):
+def battery_endpoint(req: BatteryInput):
     """Predict battery drain using RandomForest ML model."""
     COUNTER["battery"] += 1
     if battery_model is None:
@@ -215,7 +215,7 @@ async def battery_endpoint(req: BatteryInput):
 
 
 @app.get("/lanes/status")
-async def lanes_status():
+def lanes_status():
     now = datetime.now()
     rng = np.random.default_rng(int(time.time()) // 30)
     lanes = []

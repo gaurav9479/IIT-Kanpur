@@ -69,7 +69,7 @@ class AIService {
      */
     async getLanesStatus() {
         try {
-            const response = await axios.get(`${AI_URL}/lanes/status`);
+            const response = await axios.get(`${AI_URL}/lanes/status`, { timeout: 60000 });
             return response.data;
         } catch (error) {
             logger.error(`[AI-SERVICE] Lanes status fetch failed: ${error.message}`);
