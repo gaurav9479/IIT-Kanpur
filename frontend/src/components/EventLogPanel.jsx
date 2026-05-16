@@ -7,7 +7,7 @@ import { Terminal, Info, AlertTriangle, XCircle, Clock } from 'lucide-react';
  * Receives eventLog from useSocket hook in App.jsx.
  * No separate socket connection — avoids duplicate event listeners.
  */
-const EventLogPanel = ({ eventLog = [] }) => {
+const EventLogPanel = ({ eventLog = [], onClose }) => {
   // Map the eventLog prop to local display format
   const logs = eventLog?.map((entry, i) => ({
     id: entry.timestamp + i,
@@ -56,7 +56,13 @@ const EventLogPanel = ({ eventLog = [] }) => {
   };
 
   return (
-    <aside className="w-[350px] h-full bg-navy-900 border-l border-navy-800 flex flex-col shadow-2xl relative z-20">
+    <motion.aside 
+      initial={{ x: 350, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 350, opacity: 0 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="w-[350px] h-full bg-navy-900 border-l border-navy-800 flex flex-col shadow-2xl relative z-20"
+    >
       {/* Panel Header */}
       <div className="p-6 border-b border-navy-800 flex items-center justify-between bg-navy-900/50 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -68,9 +74,17 @@ const EventLogPanel = ({ eventLog = [] }) => {
             <p className="text-navy-600 text-[9px] font-black uppercase tracking-widest mt-0.5">Autonomous Tracking Feed</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-          <span className="text-navy-600 text-[8px] font-black uppercase tracking-widest">Live</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-navy-600 text-[8px] font-black uppercase tracking-widest">Live</span>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-1 hover:bg-navy-800 rounded-lg text-navy-600 hover:text-white transition-colors"
+          >
+            <XCircle size={18} />
+          </button>
         </div>
       </div>
 
@@ -140,7 +154,7 @@ const EventLogPanel = ({ eventLog = [] }) => {
            </div>
         </div>
       </div>
-    </aside>
+    </motion.aside>
   );
 };
 
