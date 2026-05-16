@@ -8,4 +8,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    host: true,   // expose on 0.0.0.0 (accessible from phone)
+    port: 5173,
+  },
 })
