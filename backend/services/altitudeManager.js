@@ -12,14 +12,15 @@ import { io } from "../server.js";
 // ALTITUDE LAYER DEFINITIONS (meters)
 // ─────────────────────────────────────────────────────────────
 export const ALTITUDE_LAYERS = [
-  { id: "ALT-40",  altitude: 40,  label: "Layer 1 (Low)",    color: "blue"   },
-  { id: "ALT-50",  altitude: 50,  label: "Layer 2 (Mid)",    color: "green"  },
-  { id: "ALT-60",  altitude: 60,  label: "Layer 3 (High)",   color: "orange" },
-  { id: "ALT-70",  altitude: 70,  label: "Layer 4 (Emergency)", color: "red"  },
+  { id: "ALT-80",  altitude: 80,  label: "Layer 1 (Low)",    color: "blue"   },
+  { id: "ALT-130", altitude: 130, label: "Layer 2 (Mid)",    color: "green"  },
+  { id: "ALT-180", altitude: 180, label: "Layer 3 (High)",   color: "orange" },
+  { id: "ALT-230", altitude: 230, label: "Layer 4 (Very High)", color: "red"  },
+  { id: "ALT-280", altitude: 280, label: "Layer 5 (Max)",    color: "purple" },
 ];
 
 // Minimum vertical separation between drones in the same horizontal vicinity
-export const VERTICAL_SEPARATION_M = 10;
+export const VERTICAL_SEPARATION_M = 50;
 
 // droneLayerMap: droneId → { layerId, altitude, assignedAt }
 const droneLayerMap = new Map();

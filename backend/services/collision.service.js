@@ -180,34 +180,46 @@ class CollisionService {
     // ─────────────────────────────────────────────
     // LANDING QUEUE
     // ─────────────────────────────────────────────
-    requestLanding(droneId, hubId, isEmergency = false) {
-        const zoneBusy = landingQueue.some((d) => d.hubId === hubId);
-        const entry = { droneId, hubId, requestedAt: Date.now(), isEmergency };
+    /**
+     * REQUEST LANDING
+     * Multi-drone landing support (3 pads per hub).
+     */
+    requestLanding(droneId, locationId, isEmergency = false) {
+        const MAX_LANDING_PADS = 3;
         
-        if (isEmergency) {
-            landingQueue.unshift(entry);
-            logger.warn(`[EMERGENCY] Priority landing cleared for Drone ${droneId} at ${hubId}`);
-            return { status: "CLEARED_PRIORITY" };
+        // Add to queue if not already present
+        const existing = landingQueue.find(d => d.droneId === droneId);
+        if (!existing) {
+            const entry = { droneId, locationId, isEmergency, timestamp: Date.now() };
+            if (isEmergency) landingQueue.unshift(entry);
+            else landingQueue.push(entry);
         }
 
-        landingQueue.push(entry);
+        // Get all drones queued for THIS specific location
+        const queueForLoc = landingQueue.filter(d => d.locationId === locationId);
+        const position = queueForLoc.findIndex(d => d.droneId === droneId);
+        
+        const isCleared = position >= 0 && position < MAX_LANDING_PADS;
 
-        if (zoneBusy) {
-            logger.info(`[LANDING] Drone ${droneId} in holding pattern at ${hubId}`);
-            io.to("admin_dashboard").emit("landing_holding", { droneId, hubId });
-            return { status: "HOLDING", position: landingQueue.length };
-        }
-
-        logger.info(`[LANDING] Drone ${droneId} cleared for landing at ${hubId}`);
-        return { status: "CLEARED" };
+        return {
+            status: isCleared ? "CLEARED" : "HOLDING",
+            position: position + 1,
+            totalInQueue: queueForLoc.length,
+            padsAvailable: Math.max(0, MAX_LANDING_PADS - queueForLoc.length)
+        };
     }
+
 
     async completeLanding(droneId) {
-        const idx = landingQueue.findIndex((d) => d.droneId === droneId);
-        if (idx !== -1) landingQueue.splice(idx, 1);
+        const idx = landingQueue.findIndex(d => d.droneId === droneId);
+        if (idx !== -1) {
+            const entry = landingQueue[idx];
+            landingQueue.splice(idx, 1);
+            logger.info(`[LANDING] ${droneId} completed landing at ${entry.locationId}. Pads remaining: ${3 - landingQueue.filter(d => d.locationId === entry.locationId).length}`);
+        }
         await Drone.updateOne({ droneId }, { status: "idle", altitude: 0 });
-        logger.info(`[LANDING] Drone ${droneId} landed`);
     }
+
 
     // ─────────────────────────────────────────────
     // EMERGENCY PROTOCOLS
