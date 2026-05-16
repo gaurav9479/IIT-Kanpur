@@ -25,7 +25,7 @@ const SafetyAlerts = ({ alerts }) => {
         <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
           <AnimatePresence>
             {alerts && alerts.length > 0 ? (
-              alerts.map((alert, idx) => {
+              alerts?.map((alert, idx) => {
                 const isNfz = alert.nfzViolation || alert.type === 'nfz_violation';
                 const isEmergency = !!alert.emergencyLanding;
                 const isProximity = (alert.proximityAlerts && alert.proximityAlerts.length > 0) || alert.type === 'collision_warning';

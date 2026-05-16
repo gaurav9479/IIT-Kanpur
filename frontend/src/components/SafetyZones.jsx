@@ -39,7 +39,7 @@ const SafetyZones = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* NFZ List */}
         <div className="lg:col-span-1 space-y-4">
-          {zones.map((zone, i) => (
+          {zones?.map((zone, i) => (
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
