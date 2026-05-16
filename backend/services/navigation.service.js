@@ -3,12 +3,14 @@ import mapService from "./map.service.js";
 import gridOccupancyService from "./gridOccupancy.service.js";
 import distanceCalculator from "../utils/distanceCalculator.js";
 import safetyService from "./safety.service.js";
+import zoneService from "./zone.service.js";
 import {
     ALTITUDE_LANES,
     TIME_SLOT_DURATION_S,
     MAX_DRONES_PER_SLOT,
-    NO_FLY_ZONES
 } from "../config/safety.config.js";
+import * as campusGraph from "../config/campusGraph.config.js";
+
 
 // ─────────────────────────────────────────────
 // TIME-SLOT OCCUPANCY TABLE
@@ -102,10 +104,11 @@ class NavigationService {
     }
 
     /**
-     * Checks if the line segment from p1 to p2 intersects with any NO_FLY_ZONE
+     * Checks if the line segment from p1 to p2 intersects with any active NO_FLY zone
      */
     isEdgeInsideNFZ(p1, p2) {
-        for (const zone of NO_FLY_ZONES) {
+        const activeNoFlyZones = zoneService.getActiveNoFlyZones();
+        for (const zone of activeNoFlyZones) {
             const poly = zone.positions;
             for (let i = 0; i < poly.length; i++) {
                 const a = poly[i];
@@ -114,7 +117,6 @@ class NavigationService {
                     return zone.name;
                 }
             }
-            // Also check if either point is INSIDE (redundant but safe)
             if (safetyService.isInsideNFZ(p1) || safetyService.isInsideNFZ(p2)) {
                 return zone.name;
             }
@@ -131,7 +133,7 @@ class NavigationService {
     }
 
     getZoneCenterAndRadius(zoneName) {
-        const zone = NO_FLY_ZONES.find(z => z.name === zoneName);
+        const zone = zoneService.getActiveNoFlyZones().find(z => z.name === zoneName);
         if (!zone) return null;
         let sumLat = 0, sumLng = 0;
         zone.positions.forEach(p => { sumLat += p.lat; sumLng += p.lng; });
@@ -146,8 +148,7 @@ class NavigationService {
     }
 
     /**
-     * Check if a node's coordinates fall inside any NFZ polygon.
-     * Used to filter BFS so drones never route through red zones.
+     * Check if a node's coordinates fall inside any active NFZ polygon.
      */
     isNodeInsideNFZ(nodeId) {
         const { CAMPUS_NODES } = campusGraph;
@@ -160,7 +161,7 @@ class NavigationService {
         const { ADJACENCY, CAMPUS_NODES } = campusGraph;
         
         if (!ADJACENCY[fromNodeId] || !ADJACENCY[toNodeId]) {
-            return null; // node not in graph
+            return null;
         }
         
         const visited = new Set();
@@ -187,11 +188,9 @@ class NavigationService {
             
             const neighbors = ADJACENCY[current] || [];
             for (const neighbor of neighbors) {
-                // SKIP neighbors that are inside No-Fly Zones
-                // (source and destination are allowed, only intermediate nodes blocked)
                 if (!visited.has(neighbor)) {
                     if (neighbor !== fromNodeId && neighbor !== toNodeId && this.isNodeInsideNFZ(neighbor)) {
-                        continue; // skip NFZ node — drone goes around
+                        continue;
                     }
                     queue.push([neighbor, [...path, neighbor]]);
                 }
@@ -201,33 +200,62 @@ class NavigationService {
         return null;
     }
 
-    // ─────────────────────────────────────────────
-    // A* GRID PATHFINDING — Routes around NFZ areas
-    // Builds an 80x80 occupancy grid, marks NFZ cells
-    // as blocked, runs A* with 8-dir movement, smooths.
-    // ─────────────────────────────────────────────
     findAStarRoute(start, end) {
-        const GRID = 150; // High resolution (increased from 120)
+        const GRID = 200;
         const BOUNDS = {
-            minLat: 26.5090, maxLat: 26.5215,
-            minLng: 80.2240, maxLng: 80.2395
+            minLat: 26.5070, maxLat: 26.5230,
+            minLng: 80.2220, maxLng: 80.2420
         };
         const latStep = (BOUNDS.maxLat - BOUNDS.minLat) / GRID;
         const lngStep = (BOUNDS.maxLng - BOUNDS.minLng) / GRID;
 
-        // Build occupancy grid (1 = blocked by NFZ, 0 = safe)
+        const RESTRICTED_COST = 5.0;
         const grid = [];
+
+        const activeNoFly = zoneService.getActiveNoFlyZones();
+        const activeRestricted = zoneService.getActiveRestrictedZones();
+
+        // Identify if start/end points are inside a Restricted Zone to allow normal cost passage
+        const startRestricted = activeRestricted.find(z => safetyService.isPointInPolygon(start, z.positions));
+        const endRestricted   = activeRestricted.find(z => safetyService.isPointInPolygon(end,   z.positions));
+
         for (let r = 0; r < GRID; r++) {
             grid[r] = [];
             for (let c = 0; c < GRID; c++) {
                 const lat = BOUNDS.minLat + r * latStep;
                 const lng = BOUNDS.minLng + c * lngStep;
-                grid[r][c] = safetyService.isInsideNFZ({ lat, lng }) ? 1 : 0;
+                const pt = { lat, lng };
+
+                // Check NO_FLY (STRICT hard block)
+                let blocked = false;
+                for (const zone of activeNoFly) {
+                    if (safetyService.isPointInPolygon(pt, zone.positions)) {
+                        blocked = true;
+                        break;
+                    }
+                }
+                if (blocked) { grid[r][c] = 1; continue; }
+
+                // Check RESTRICTED (soft cost)
+                let cost = 0;
+                for (const zone of activeRestricted) {
+                    if (safetyService.isPointInPolygon(pt, zone.positions)) {
+                        // EXCEPTION: If this is the Restricted Zone containing our target, cost is normal (0)
+                        if (zone.id === startRestricted?.id || zone.id === endRestricted?.id) {
+                            cost = 0;
+                        } else {
+                            cost = RESTRICTED_COST;
+                        }
+                        break;
+                    }
+                }
+                grid[r][c] = cost;
             }
         }
 
-        // Safety Buffer: Expand blocked areas by 1 cell only (150 grid = ~10m accuracy)
+        // Safety buffer: expand hard-blocked cells by 1 cell
         const finalGrid = grid.map(row => [...row]);
+
         for (let r = 1; r < GRID - 1; r++) {
             for (let c = 1; c < GRID - 1; c++) {
                 if (grid[r][c] === 1) {
@@ -237,13 +265,11 @@ class NavigationService {
             }
         }
 
-        // Convert lat/lng to grid cell
+        // Convert lat/lng ↔ grid cell
         const toCell = (lat, lng) => ({
             r: Math.max(0, Math.min(GRID - 1, Math.round((lat - BOUNDS.minLat) / latStep))),
             c: Math.max(0, Math.min(GRID - 1, Math.round((lng - BOUNDS.minLng) / lngStep)))
         });
-
-        // Convert grid cell to lat/lng
         const toLatLng = (r, c) => ({
             lat: BOUNDS.minLat + r * latStep,
             lng: BOUNDS.minLng + c * lngStep
@@ -252,14 +278,27 @@ class NavigationService {
         const sc = toCell(start.lat, start.lng);
         const ec = toCell(end.lat, end.lng);
 
-        // Force start/end cells open
+        // Force start/end cells and their neighbors open (2-cell radius) to ensure connectivity
+        for (let dr = -2; dr <= 2; dr++) {
+            for (let dc = -2; dc <= 2; dc++) {
+                const r = sc.r + dr;
+                const c = sc.c + dc;
+                if (finalGrid[r]?.[c] === 1) finalGrid[r][c] = 0;
+                
+                const er = ec.r + dr;
+                const ec_ = ec.c + dc;
+                if (finalGrid[er]?.[ec_] === 1) finalGrid[er][ec_] = 0;
+            }
+        }
         finalGrid[sc.r][sc.c] = 0;
         finalGrid[ec.r][ec.c] = 0;
 
-        // A* algorithm
+        // A* — g-cost uses cell value as movement cost multiplier
         const heuristic = (r1, c1, r2, c2) => Math.sqrt((r1-r2)**2 + (c1-c2)**2);
         const openSet = [{ r: sc.r, c: sc.c, g: 0, f: heuristic(sc.r, sc.c, ec.r, ec.c), parent: null }];
         const closed = new Set();
+        const gMap = new Map();
+        gMap.set(`${sc.r},${sc.c}`, 0);
 
         while (openSet.length > 0) {
             openSet.sort((a, b) => a.f - b.f);
@@ -272,30 +311,16 @@ class NavigationService {
                 while (t) { raw.push([t.r, t.c]); t = t.parent; }
                 raw.reverse();
 
-                // ── TURNING-POINT PRESERVAL SMOOTHING ─────────────────
-                // Keep first + last always, every minStep-th point, AND
-                // any point where direction changes (NFZ boundary corner).
-                // Guarantees detour curvature is preserved in final path.
+                // Smoothing with turning-point preservation
                 const MAX_WP  = 50;
                 const minStep = Math.max(1, Math.floor(raw.length / MAX_WP));
                 const smoothed = [raw[0]];
-
                 for (let i = 1; i < raw.length - 1; i++) {
-                    const prev = raw[i - 1];
-                    const curr = raw[i];
-                    const next = raw[i + 1];
-                    const dr1 = curr[0] - prev[0];
-                    const dc1 = curr[1] - prev[1];
-                    const dr2 = next[0] - curr[0];
-                    const dc2 = next[1] - curr[1];
-                    const isTurn = (dr1 !== dr2) || (dc1 !== dc2);
-                    const isStep = (i % minStep === 0);
-                    if (isTurn || isStep) {
-                        smoothed.push(curr);
-                    }
+                    const prev = raw[i - 1], curr = raw[i], next = raw[i + 1];
+                    const isTurn = (curr[0]-prev[0] !== next[0]-curr[0]) || (curr[1]-prev[1] !== next[1]-curr[1]);
+                    if (isTurn || i % minStep === 0) smoothed.push(curr);
                 }
                 smoothed.push(raw[raw.length - 1]);
-                // ──────────────────────────────────────────────────────
 
                 return smoothed.map(([r, c]) => {
                     const ll = toLatLng(r, c);
@@ -307,23 +332,29 @@ class NavigationService {
             if (closed.has(key)) continue;
             closed.add(key);
 
-            // 8-directional neighbors
             for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
                 const nr = cur.r + dr;
                 const nc = cur.c + dc;
                 if (nr < 0 || nr >= GRID || nc < 0 || nc >= GRID) continue;
-                if (finalGrid[nr][nc] === 1) continue;
+                if (finalGrid[nr][nc] === 1) continue; // hard block
                 if (closed.has(`${nr},${nc}`)) continue;
 
-                const g = cur.g + (dr && dc ? 1.414 : 1);
-                const existing = openSet.find(o => o.r === nr && o.c === nc);
+                // Movement cost: base (diagonal = 1.414, cardinal = 1) × cell multiplier
+                const cellCost = finalGrid[nr][nc] > 1 ? finalGrid[nr][nc] : 1;
+                const moveCost = (dr && dc ? 1.414 : 1) * cellCost;
+                const g = cur.g + moveCost;
+                const nk = `${nr},${nc}`;
 
-                if (!existing) {
-                    openSet.push({ r: nr, c: nc, g, f: g + heuristic(nr, nc, ec.r, ec.c), parent: cur });
-                } else if (g < existing.g) {
-                    existing.g = g;
-                    existing.f = g + heuristic(nr, nc, ec.r, ec.c);
-                    existing.parent = cur;
+                if (!gMap.has(nk) || g < gMap.get(nk)) {
+                    gMap.set(nk, g);
+                    const existing = openSet.find(o => o.r === nr && o.c === nc);
+                    if (existing) {
+                        existing.g = g;
+                        existing.f = g + heuristic(nr, nc, ec.r, ec.c);
+                        existing.parent = cur;
+                    } else {
+                        openSet.push({ r: nr, c: nc, g, f: g + heuristic(nr, nc, ec.r, ec.c), parent: cur });
+                    }
                 }
             }
         }
@@ -334,37 +365,102 @@ class NavigationService {
 
     async get3DRoute(start, end, options = {}) {
         const droneId = options.droneId;
-
-        // ── A* GRID PATHFINDING — ONLY ALGORITHM ────────────────
-        // Builds a 150×150 grid over the campus, marks all NFZ cells
-        // with a safety buffer, and finds the optimal safe path.
-        // No fallbacks. If A* cannot find a route, the mission is rejected.
-        // ─────────────────────────────────────────────────────────
         const astarPath = this.findAStarRoute(start, end);
 
         if (!astarPath || astarPath.length < 2) {
-            logger.error(`[NAV] A* found no safe route for ${droneId}. Mission rejected — no straight-line or alternative fallback.`);
-            throw new Error(`No safe A* route found between the specified coordinates. Adjust start/end points away from NFZ boundaries.`);
+            logger.error(`[NAV] A* found no safe route for ${droneId}. Mission rejected.`);
+            throw new Error(`No safe A* route found between the specified coordinates.`);
         }
 
         const slotIndex = getTimeSlot(Date.now());
         const lane = assignLane(start, end, slotIndex, options.congestionScores || {});
-        const altitude = options.operatingAltitude || (lane ? lane.altitude : 50);
+        const altitude = options.operatingAltitude || (lane ? lane.altitude : 80);
 
         if (lane) {
             reserveSlot(lane.id, slotIndex, droneId);
-            logger.info(`[NAV] Reserved Lane ${lane.id} Slot ${slotIndex} for ${droneId}`);
         }
 
-        logger.info(`[NAV] A* route: ${astarPath.length} waypoints for ${droneId} | altitude: ${altitude}m`);
+        // Add vertical segments for takeoff and landing
+        const fullPath = [
+            { lat: start.lat, lng: start.lng, z: 0 },
+            { lat: start.lat, lng: start.lng, z: altitude },
+            ...astarPath.map(p => ({ ...p, z: altitude })),
+            { lat: end.lat, lng: end.lng, z: altitude },
+            { lat: end.lat, lng: end.lng, z: 0 }
+        ];
+
         return {
-            path: astarPath.map(p => ({ ...p, z: altitude })),
+            path: fullPath,
             distance: distanceCalculator.calculatePathDistance(astarPath),
             lane: lane ? lane.id : null,
             slotIndex,
             altitude,
-            laneAssigned: !!lane,
             source: "astar-grid"
+        };
+    }
+
+    async getFullMissionPath(hub, pickup, drop, options = {}) {
+        const droneId = options.droneId;
+        const altitude = options.operatingAltitude || 80;
+
+        // Leg 1: Hub to Pickup
+        const path1 = this.findAStarRoute(hub, pickup);
+        if (!path1) throw new Error("Mission planning failed: Cannot find safe route from Hub to Pickup point. Target may be inside a restricted zone.");
+
+        // Leg 2: Pickup to Drop
+        const path2 = this.findAStarRoute(pickup, drop);
+        if (!path2) throw new Error("Mission planning failed: Cannot find safe route from Pickup to Drop-off point. Destination may be inside a restricted zone.");
+
+        // Leg 3: Drop to Hub
+        const path3 = this.findAStarRoute(drop, hub);
+        if (!path3) throw new Error("Mission planning failed: Cannot find safe route back to Hub from Drop-off point.");
+
+        const combinedPath = [
+            // --- HUB TAKEOFF ---
+            { lat: hub.lat, lng: hub.lng, z: 0, phase: "Hub Takeoff" },
+            { lat: hub.lat, lng: hub.lng, z: altitude, phase: "Hub Takeoff" },
+            
+            // --- CRUISE TO PICKUP ---
+            ...path1.map(p => ({ ...p, z: altitude, phase: "To Pickup" })),
+            
+            // --- PICKUP LANDING ---
+            { lat: pickup.lat, lng: pickup.lng, z: altitude, phase: "Pickup Approach" },
+            { lat: pickup.lat, lng: pickup.lng, z: 0, phase: "Pickup Approach" },
+            
+            // --- WAIT AT PICKUP (Simulated loading) ---
+            { lat: pickup.lat, lng: pickup.lng, z: 0, phase: "Loading Package" },
+            { lat: pickup.lat, lng: pickup.lng, z: 0, phase: "Loading Package" },
+            
+            // --- PICKUP TAKEOFF ---
+            { lat: pickup.lat, lng: pickup.lng, z: altitude, phase: "Pickup Takeoff" },
+            
+            // --- CRUISE TO DROP ---
+            ...path2.map(p => ({ ...p, z: altitude, phase: "Active Delivery" })),
+            
+            // --- DROP LANDING ---
+            { lat: drop.lat, lng: drop.lng, z: altitude, phase: "Delivery Approach" },
+            { lat: drop.lat, lng: drop.lng, z: 0, phase: "Delivery Approach" },
+            
+            // --- WAIT AT DROP (Simulated delivery) ---
+            { lat: drop.lat, lng: drop.lng, z: 0, phase: "Dropping Package" },
+            { lat: drop.lat, lng: drop.lng, z: 0, phase: "Dropping Package" },
+            
+            // --- DROP TAKEOFF ---
+            { lat: drop.lat, lng: drop.lng, z: altitude, phase: "RTH Takeoff" },
+            
+            // --- CRUISE TO HUB ---
+            ...path3.map(p => ({ ...p, z: altitude, phase: "Returning to Hub" })),
+            
+            // --- HUB LANDING ---
+            { lat: hub.lat, lng: hub.lng, z: altitude, phase: "Final Approach" },
+            { lat: hub.lat, lng: hub.lng, z: 0, phase: "Landed" }
+        ];
+
+        return {
+            path: combinedPath,
+            distance: distanceCalculator.calculatePathDistance([...path1, ...path2, ...path3]),
+            altitude,
+            source: "astar-grid-lifecycle"
         };
     }
 
@@ -378,7 +474,7 @@ class NavigationService {
     }
 
     // ─────────────────────────────────────────────
-    // A* (original — unchanged)
+    // A* (grid-based — original interface unchanged)
     // ─────────────────────────────────────────────
     runAStar(grid, start, end, droneId) {
         const rows = grid.length;

@@ -1,5 +1,6 @@
-import { NO_FLY_ZONES, COLLISION_THRESHOLD, SAFE_LANDING_ZONES } from "../config/safety.config.js";
+import { COLLISION_THRESHOLD, SAFE_LANDING_ZONES } from "../config/safety.config.js";
 import Drone from "../models/Drone.model.js";
+import zoneService from "./zone.service.js";
 
 class SafetyService {
 
@@ -18,9 +19,14 @@ class SafetyService {
         return R * c;
     }
 
-
+    /**
+     * Checks whether a lat/lng point is inside any active NO_FLY zone.
+     * Uses the in-memory zone cache from zoneService — O(1) lookup, no DB calls.
+     * Returns zone name (truthy) if inside, null if safe.
+     */
     isInsideNFZ(location) {
-        for (const zone of NO_FLY_ZONES) {
+        const activeNoFlyZones = zoneService.getActiveNoFlyZones();
+        for (const zone of activeNoFlyZones) {
             if (this.isPointInPolygon(location, zone.positions)) {
                 return zone.name;
             }
