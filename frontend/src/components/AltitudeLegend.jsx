@@ -9,6 +9,7 @@
  */
 
 import React, { useMemo } from "react";
+import { motion } from "framer-motion";
 import { Layers, AlertTriangle } from "lucide-react";
 
 const LAYERS = [
@@ -23,7 +24,7 @@ const TRAIL_LEGEND = [
   { color: "#f97316", label: "Pickup approach", dash: false },
   { color: "#22c55e", label: "Active delivery",  dash: false },
   { color: "#0d9488", label: "Return to hub",    dash: true  },
-  { color: "#eab308", label: "Charging / RTH",   dash: true  },
+  { color: "#f59e0b", label: "Charging / RTH",   dash: true  },
 ];
 
 function getLayerIdForAlt(alt) {
@@ -172,17 +173,24 @@ const AltitudeLegend = ({ drones = {}, compactMode = false }) => {
       </div>
 
       {/* High-traffic warning */}
-      {totalActive > 3 && (
-        <div style={{
-          marginTop: 12, display: "flex", alignItems: "center", gap: 6,
-          padding: "6px 10px", borderRadius: 8,
-          background: "#fef9c3", border: "1px solid #fbbf24",
-        }}>
-          <AlertTriangle size={11} color="#d97706" />
-          <span style={{ fontSize: 9, fontWeight: 700, color: "#92400e" }}>
+      {totalActive >= 0 && ( // Always show for demo/visibility as requested, or set threshold
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          style={{
+            marginTop: 14, display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px", borderRadius: 12,
+            background: "#fffbeb", border: "1.5px solid #fde68a",
+            boxShadow: "0 2px 10px rgba(251, 191, 36, 0.1)"
+          }}
+        >
+          <div style={{ background: "#fef3c7", padding: 5, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <AlertTriangle size={14} color="#d97706" />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#92400e", letterSpacing: "-0.01em" }}>
             High traffic — conflict monitoring active
           </span>
-        </div>
+        </motion.div>
       )}
     </div>
   );
