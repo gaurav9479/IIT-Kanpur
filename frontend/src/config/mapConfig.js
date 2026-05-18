@@ -42,8 +42,20 @@ export const LANE_COUNT = 10;
 // ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────
 const API_HOST = import.meta.env.VITE_API_HOST || (typeof window !== 'undefined' ? window.location.hostname : "localhost");
-export const SOCKET_URL = `http://${API_HOST}:5001`;
-export const API_URL = `http://${API_HOST}:5001/api/v1`;
+
+// Auto-detect production environment (e.g. Railway, Render, or Vite prod mode)
+// Production endpoints serve over standard HTTPS (no port 5001)
+const isProd = API_HOST.includes("railway.app") || API_HOST.includes("onrender.com") || import.meta.env.PROD;
+
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 
+    (isProd 
+        ? `https://${API_HOST}` 
+        : `http://${API_HOST}:5001`);
+
+export const API_URL = import.meta.env.VITE_API_URL || 
+    (isProd 
+        ? `https://${API_HOST}/api/v1` 
+        : `http://${API_HOST}:5001/api/v1`);
 
 // ─────────────────────────────────────────────────────────────
 // CAMPUS NODES — 64 nodes from notebook (cell 6 + Power_Station)

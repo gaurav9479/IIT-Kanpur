@@ -4,7 +4,7 @@ import Drone from './models/Drone.model.js';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/drone-navigation";
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://localhost:27017/drone-navigation";
 
 const HUBS = [
     { name: "Hub North", lat: 26.5200, lng: 80.2320 },

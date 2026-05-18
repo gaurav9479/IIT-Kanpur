@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+
+  ai-service:
+    build:
+      context: ./ai-prediction
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb+srv://gauravshivmurat2_db_user:PRODUCT_MaNAGER@iit1.cwtqr8z.mongodb.net/
+      - AI_SERVICE_URL=http://ai-service:8000
+    depends_on:
+      - ai-service
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always

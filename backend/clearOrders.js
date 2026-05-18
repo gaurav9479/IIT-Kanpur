@@ -8,7 +8,7 @@ dotenv.config();
 
 const clearOrders = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI);
     console.log("Connected to MongoDB for clearing orders...");
 
     const r1 = await Order.deleteMany({});

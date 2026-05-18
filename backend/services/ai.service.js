@@ -1,7 +1,7 @@
 import axios from "axios";
 import logger from "../utils/logger.js";
 
-const AI_URL = process.env.AI_MODULE_URL || "http://localhost:8000";
+const AI_URL = process.env.AI_MODULE_URL || process.env.AI_SERVICE_URL || "http://localhost:8000";
 
 class AIService {
     /**
