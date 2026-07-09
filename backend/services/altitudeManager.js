@@ -32,6 +32,11 @@ const droneLayerMap = new Map();
 // layerCount: layerId → Set of droneIds
 const layerCount = new Map(ALTITUDE_LAYERS.map(l => [l.id, new Set()]));
 
+// Temporary soft blocks for predictive collision avoidance
+// Key: timestamp_uuid, Value: { lat, lng, radius, expiry }
+const tempBlocks = new Map();
+
+
 // ─────────────────────────────────────────────────────────────
 // PUBLIC API
 // ─────────────────────────────────────────────────────────────
@@ -124,13 +129,42 @@ function getLayerSnapshot() {
   return snapshot;
 }
 
-/**
- * Returns the color code for the given altitude.
- * Used by frontend to color-code markers.
- */
 function getAltitudeColor(altitude) {
   const layer = ALTITUDE_LAYERS.find(l => l.altitude === altitude);
   return layer ? layer.color : "gray";
+}
+
+/**
+ * Adds a temporary conflict zone block to force dynamic rerouting.
+ * Automatically expires after 20 seconds.
+ */
+function addTemporaryBlock(lat, lng, radiusMeters) {
+  const id = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
+  const expiry = Date.now() + 20000; // 20 seconds expiry
+  tempBlocks.set(id, { lat, lng, radius: radiusMeters, expiry });
+  
+  logger.info(`[ALT-BLOCK] Temp restricted zone created at [${lat.toFixed(4)}, ${lng.toFixed(4)}] for 20s`);
+  
+  // Cleanup timer
+  setTimeout(() => {
+    tempBlocks.delete(id);
+  }, 20000);
+}
+
+/**
+ * Gets all active temporary blocks.
+ */
+function getTemporaryBlocks() {
+  const now = Date.now();
+  const active = [];
+  for (const [id, block] of tempBlocks.entries()) {
+    if (now > block.expiry) {
+      tempBlocks.delete(id);
+    } else {
+      active.push(block);
+    }
+  }
+  return active;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -161,6 +195,8 @@ export default {
   getAssignment,
   getLayerSnapshot,
   getAltitudeColor,
+  addTemporaryBlock,
+  getTemporaryBlocks,
   ALTITUDE_LAYERS,
   VERTICAL_SEPARATION_M,
 };

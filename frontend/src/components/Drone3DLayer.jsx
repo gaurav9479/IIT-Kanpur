@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { Marker, Polyline, Tooltip, useMap } from "react-leaflet";
+import { Marker, Polyline, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import { io } from "socket.io-client";
 import { SOCKET_URL } from "../config/mapConfig";
@@ -70,6 +70,7 @@ const MAX_TRAIL = 50; // keep last N positions on trail
 const Drone3DLayer = ({ externalDrones = {}, warningDrones = new Set() }) => {
   const [drones3D, setDrones3D] = useState({}); // droneId → latest 3D state
   const [trails,   setTrails]   = useState({}); // droneId → { points:[[lat,lng]], phase, status }
+  const [predictions, setPredictions] = useState([]); // Array of predictive warnings
   const socketRef = useRef(null);
   const map = useMap();
 
@@ -97,9 +98,9 @@ const Drone3DLayer = ({ externalDrones = {}, warningDrones = new Set() }) => {
       // Append to trail — store phase with each segment so we can
       // split the polyline into orange (pickup) and green (delivery) sections
       setTrails(prev => {
-        const existing = prev[droneId] ?? { points: [], phase: phase ?? "delivery", status };
+        const existing = prev[droneId] ?? { points: [], phase: phase ?? "delivery", status, heading: data.heading };
         const newPoints = [...existing.points, [lat, lng]].slice(-MAX_TRAIL);
-        return { ...prev, [droneId]: { points: newPoints, phase: phase ?? existing.phase, status } };
+        return { ...prev, [droneId]: { points: newPoints, phase: phase ?? existing.phase, status, heading: data.heading } };
       });
     });
 
@@ -124,12 +125,30 @@ const Drone3DLayer = ({ externalDrones = {}, warningDrones = new Set() }) => {
       }));
     });
 
+    socket.on("predictive_warning", (warning) => {
+      setPredictions((prev) => {
+        const pairKey = [warning.drone1, warning.drone2].sort().join('-');
+        const existing = prev.find(w => [w.drone1, w.drone2].sort().join('-') === pairKey);
+        if (existing) {
+          return prev.map(w => w === existing ? warning : w);
+        }
+        return [...prev, warning];
+      });
+    });
+
+    // Clean up expired predictions (older than 15s)
+    const cleanupInterval = setInterval(() => {
+      setPredictions(prev => prev.filter(w => Date.now() - w.timestamp < 15000));
+    }, 2000);
+
     return () => {
       socket.off("drone_position_3d");
       socket.off("drone_low_battery");
       socket.off("drone_charging");
       socket.off("drone_charging_done");
+      socket.off("predictive_warning");
       socket.disconnect();
+      clearInterval(cleanupInterval);
     };
   }, []);
 
@@ -137,6 +156,47 @@ const Drone3DLayer = ({ externalDrones = {}, warningDrones = new Set() }) => {
 
   return (
     <>
+      {/* 1. Render Conflict Zone Markers */}
+      {predictions.map((warning, idx) => {
+        let color = '#eab308';
+        if (warning.type === 'MODERATE') color = '#f97316';
+        if (warning.type === 'CRITICAL') color = '#ef4444';
+        
+        return (
+          <React.Fragment key={`pred_${idx}`}>
+            <CircleMarker
+              center={[warning.conflictPoint.lat, warning.conflictPoint.lng]}
+              radius={15}
+              pathOptions={{ color, fillColor: color, fillOpacity: 0.2, weight: 2 }}
+            >
+              <Tooltip direction="top" offset={[0, -10]} permanent>
+                <div style={{ fontSize: '10px', fontWeight: 'bold' }}>T - {warning.timeToConflict}s</div>
+              </Tooltip>
+            </CircleMarker>
+            
+            {/* Draw predicted trajectory lines for the involved drones */}
+            {drones3D[warning.drone1] && (
+              <Polyline
+                positions={[
+                  [drones3D[warning.drone1].lat, drones3D[warning.drone1].lng],
+                  [warning.conflictPoint.lat, warning.conflictPoint.lng]
+                ]}
+                pathOptions={{ color, weight: 2, dashArray: "4 6", opacity: 0.8 }}
+              />
+            )}
+            {drones3D[warning.drone2] && (
+              <Polyline
+                positions={[
+                  [drones3D[warning.drone2].lat, drones3D[warning.drone2].lng],
+                  [warning.conflictPoint.lat, warning.conflictPoint.lng]
+                ]}
+                pathOptions={{ color, weight: 2, dashArray: "4 6", opacity: 0.8 }}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+
       {(droneList || [])?.map((drone) => {
         const { droneId, lat, lng, alt = 50, speed = 0, status, phase, etaLabel } = drone;
         if (!lat || !lng) return null;

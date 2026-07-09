@@ -9,11 +9,13 @@ import { useAIPredictions } from '../hooks/useAIPredictions';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell
 } from 'recharts';
+import { useSocket } from '../hooks/useSocket';
 
 // ── Components ─────────────────────────────────────────────────────────────
 
 export default function AIPredictionPanel() {
   const { lanes, aiOnline, aiHealth, laneLoading, lastUpdated, fetchLaneStatus, predictCongestion, predictETA, predictBattery } = useAIPredictions();
+  const { drones } = useSocket();
 
   // Prediction Form State
   const [formParams, setFormParams] = useState({
@@ -47,6 +49,23 @@ export default function AIPredictionPanel() {
     } finally {
       setPredictLoading(false);
     }
+  };
+
+  const handleSyncScenario = () => {
+    const activeDrones = Object.values(drones).filter(d => 
+      d.status === 'delivering' || d.status === 'active' || d.status === 'returning'
+    );
+    const numDrones = activeDrones.length;
+    const avgBattery = activeDrones.length > 0 
+      ? activeDrones.reduce((sum, d) => sum + (d.battery || d.batteryLevel || 100), 0) / activeDrones.length 
+      : 100;
+    
+    setFormParams(prev => ({
+      ...prev,
+      num_drones: numDrones,
+      battery_level: Math.round(avgBattery),
+      hour: new Date().getHours()
+    }));
   };
 
   const handleETAPredict = async () => {
@@ -191,10 +210,16 @@ export default function AIPredictionPanel() {
         <div className="space-y-6">
           
           <div className="bg-[#0a1628] rounded-xl border border-[#00ff8833] overflow-hidden">
-            <div className="p-4 border-b border-[#1e2a45] bg-[#050a0e]">
+            <div className="p-4 border-b border-[#1e2a45] bg-[#050a0e] flex items-center justify-between">
               <h3 className="text-[#00ff88] font-bold uppercase tracking-widest flex items-center gap-2 text-sm font-mono">
                 <Navigation size={16} /> Predict Mode: Test Drone Logistics
               </h3>
+              <button 
+                onClick={handleSyncScenario}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00ff8822] text-[#00ff88] rounded border border-[#00ff8844] font-bold text-[9px] uppercase tracking-widest hover:bg-[#00ff8844] transition-all"
+              >
+                <RefreshCw size={12} /> Sync Live Scenario
+              </button>
             </div>
             
             <div className="p-5 grid grid-cols-2 gap-4 border-b border-[#1e2a45]">

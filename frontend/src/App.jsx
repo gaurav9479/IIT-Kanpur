@@ -20,6 +20,8 @@ import SettingsPage from './components/SettingsPage';
 import AddFleetPage from './components/AddFleetPage';
 import ScenarioPanel from './components/ScenarioPanel';
 import AIPredictionPanel from './components/AIPredictionPanel';
+import WarningPanel from './components/WarningPanel';
+import AltitudeLegend from './components/AltitudeLegend';
 import { useSocket } from './hooks/useSocket';
 import { useZones } from './hooks/useZones';
 
@@ -32,16 +34,23 @@ const DashboardOverview = ({ drones, alerts, gridData, warningDrones, connected,
       </div>
     )}
     <MetricsDashboard drones={drones} />
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-      <div className="lg:col-span-3 space-y-8">
+    <div className="grid grid-cols-1 gap-8">
+      <div className="w-full space-y-8">
         {/* Map receives both drones, gridData, and live zones */}
         <LiveFleetMap drones={drones} gridData={gridData} warningDrones={warningDrones} zones={zones} />
-        <DroneGrid drones={Object.values(drones)} />
       </div>
-      <div className="lg:col-span-1 space-y-8">
-        <ScenarioPanel />
-        <SafetyAlerts alerts={alerts} />
-        <DecisionExplanationPanel />
+      {/* ── Below the map panels ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1">
+          <ScenarioPanel />
+        </div>
+        <div className="lg:col-span-1">
+          <AltitudeLegend drones={drones} />
+        </div>
+        <div className="lg:col-span-1 space-y-8">
+          <WarningPanel />
+          <SafetyAlerts alerts={alerts} />
+        </div>
       </div>
     </div>
   </main>

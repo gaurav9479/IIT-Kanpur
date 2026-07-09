@@ -16,6 +16,7 @@ import { io } from "../server.js";
 import Drone from "../models/Drone.model.js";
 import altitudeManager from "./altitudeManager.js";
 import { NO_FLY_ZONES } from "../config/safety.config.js";
+import { checkPredictiveCollision } from "./predictiveCollision.js";
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -273,11 +274,12 @@ async function checkNFZViolations3D() {
 
 function startMonitoring3D() {
   setInterval(async () => {
-    await checkAllDrones3D();
+    // Replace old reactive proximity sweep with predictive collision checks
+    await checkPredictiveCollision();
     await checkNFZViolations3D();
   }, POLL_INTERVAL_MS);
 
-  logger.info("[3D-COL] 3D Collision & NFZ monitoring started (2s interval)");
+  logger.info("[3D-COL] 3D Predictive Collision & NFZ monitoring started (2s interval)");
 }
 
 export default {

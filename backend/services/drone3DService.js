@@ -11,6 +11,7 @@ import collision3D from "./collision3D.js";
 import aiService from "./ai.service.js";
 import safetyService from "./safety.service.js";
 import collisionService from "./collision.service.js";
+import { droneStateMap } from "./predictiveCollision.js";
 import { ALTITUDE_LANES } from "../config/safety.config.js";
 
 // ─────────────────────────────────────────────────────────────
@@ -107,9 +108,27 @@ function buildDroneState3D(droneId, pos, speed, missionState, battery, status = 
   const totalM  = missionState.totalMetres;
   const remainM = Math.max(0, pos.remainingMetres ?? 0);
   const etaSeconds = speed > 0 ? Math.round(remainM / speed) : 0;
+  
+  // Calculate heading based on previous position if available
+  let heading = 0;
+  const prevState = droneStateMap.get(droneId);
+  if (prevState && (prevState.lat !== pos.lat || prevState.lng !== pos.lng)) {
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const toDeg = (rad) => (rad * 180) / Math.PI;
+      const lat1 = toRad(prevState.lat);
+      const lat2 = toRad(pos.lat);
+      const dLng = toRad(pos.lng - prevState.lng);
+      const y = Math.sin(dLng) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+      heading = (toDeg(Math.atan2(y, x)) + 360) % 360;
+  } else if (prevState) {
+      heading = prevState.heading; // Maintain heading if hovering
+  }
+
   return {
     id: droneId, droneId, lat: +pos.lat.toFixed(6), lng: +pos.lng.toFixed(6), alt: +pos.alt.toFixed(1),
     speed, status, phase, batteryLevel: +battery.toFixed(1), timestamp: Date.now(),
+    heading: +heading.toFixed(2),
     altColor: altitudeManager.getAltitudeColor(Math.round(pos.alt / 10) * 10),
     etaSeconds, etaLabel: etaSeconds > 0 ? `${Math.ceil(etaSeconds / 60)}min ${etaSeconds % 60}s` : "Arriving",
     distanceRemaining: +remainM.toFixed(1), progressPct: totalM > 0 ? +(((totalM - remainM) / totalM) * 100).toFixed(1) : 100,
@@ -129,9 +148,14 @@ function startChargingCycle(droneId, batteryAtArrival) {
       battery = Math.min(100, batteryAtArrival + elapsed * CHARGE_RATE_PER_S);
       const state = {
         droneId, lat: POWER_STATION.lat, lng: POWER_STATION.lng, alt: POWER_STATION.alt,
-        speed: 0, status: "charging", batteryLevel: +battery.toFixed(1), timestamp: Date.now(),
+        speed: 0, heading: 0, status: "charging", batteryLevel: +battery.toFixed(1), timestamp: Date.now(),
       };
-      io.emit("drone_position_3d", state);
+      
+      droneStateMap.set(droneId, state);
+      
+      io.to("admin_dashboard").emit("drone_position_3d", state);
+      io.to(`drone_${droneId}`).emit("drone_position_3d", state);
+      
       await Drone.updateOne({ droneId }, { status: "charging", batteryLevel: +battery.toFixed(1) });
       if (elapsed >= totalTime) {
         clearInterval(chargeTicker);
@@ -184,8 +208,10 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
       if (clearance.status === "HOLDING") {
         elapsedMetres -= deltaM; // Hover
         const state = buildDroneState3D(droneId, pos, 0, { totalMetres: pathLenM }, battery, "hovering", "queue");
-        io.emit("drone_position_3d", state);
-        if (shouldAlert(droneId, "QUEUE")) io.emit("event_log", { message: `⏳ QUEUE: ${droneId} holding for landing at ${locId}`, type: "warning" });
+        droneStateMap.set(droneId, state);
+        io.to("admin_dashboard").emit("drone_position_3d", state);
+        io.to(`drone_${droneId}`).emit("drone_position_3d", state);
+        if (shouldAlert(droneId, "QUEUE")) io.to("admin_dashboard").emit("event_log", { message: `⏳ QUEUE: ${droneId} holding for landing at ${locId}`, type: "warning" });
         return;
       }
     }
@@ -194,7 +220,10 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
     const status = getFriendlyStatus(pos.phase);
     const state = buildDroneState3D(droneId, pos, speedMps, { totalMetres: pathLenM }, battery, status, pos.phase);
 
-    io.emit("drone_position_3d", state);
+    droneStateMap.set(droneId, state);
+
+    io.to("admin_dashboard").emit("drone_position_3d", state);
+    io.to(`drone_${droneId}`).emit("drone_position_3d", state);
     
     // 🧠 INTELLIGENT ALTITUDE ADJUSTMENT (Congestion Avoidance)
     if (Math.floor(elapsedSec) % 5 === 0 && Math.floor(elapsedSec) > 0) {
@@ -253,6 +282,7 @@ async function startDrone3D(droneId, path3D, speedMps = DEFAULT_SPEED_MPS, onCom
     if (pos.remainingMetres <= 0) {
       clearInterval(ticker);
       activeMissions.delete(droneId);
+      droneStateMap.delete(droneId);
       altitudeManager.releaseLayer(droneId);
       await Drone.updateOne({ droneId }, { status: "idle", altitude: 0 });
       if (onComplete) onComplete(droneId);

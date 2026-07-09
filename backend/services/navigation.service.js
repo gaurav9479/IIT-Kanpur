@@ -9,6 +9,7 @@ import {
     TIME_SLOT_DURATION_S,
     MAX_DRONES_PER_SLOT,
 } from "../config/safety.config.js";
+import altitudeManager from "./altitudeManager.js";
 import * as campusGraph from "../config/campusGraph.config.js";
 
 
@@ -214,6 +215,7 @@ class NavigationService {
 
         const activeNoFly = zoneService.getActiveNoFlyZones();
         const activeRestricted = zoneService.getActiveRestrictedZones();
+        const tempBlocks = altitudeManager.getTemporaryBlocks();
 
         // Identify if start/end points are inside a Restricted Zone to allow normal cost passage
         const startRestricted = activeRestricted.find(z => safetyService.isPointInPolygon(start, z.positions));
@@ -247,6 +249,19 @@ class NavigationService {
                             cost = RESTRICTED_COST;
                         }
                         break;
+                    }
+                }
+                
+                // Check Temporary Predictive Collision Blocks (soft cost)
+                if (cost === 0) {
+                    for (const tb of tempBlocks) {
+                        const dist = distanceCalculator.calculateDistance(pt.lat, pt.lng, tb.lat, tb.lng);
+                        // tb.radius is in meters, distanceCalculator returns km by default usually, wait, let's assume it returns km
+                        // distanceCalculator.calculateDistance returns km. tb.radius is in meters.
+                        if (dist * 1000 <= tb.radius) {
+                            cost = RESTRICTED_COST;
+                            break;
+                        }
                     }
                 }
                 grid[r][c] = cost;

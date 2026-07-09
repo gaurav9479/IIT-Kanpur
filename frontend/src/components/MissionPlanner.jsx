@@ -26,6 +26,7 @@ import {
   API_URL,
 } from '../config/mapConfig';
 import { useZones } from '../hooks/useZones';
+import { useAIPredictions } from '../hooks/useAIPredictions';
 
 const ZONE_COLORS = {
   NO_FLY:     { stroke: '#ef4444', fill: '#ef4444' },
@@ -108,6 +109,10 @@ const MissionPlanner = () => {
   const [routeStats,   setRouteStats]   = useState(null);
   const [clickMode,    setClickMode]    = useState(false); // map click mode
   const { zones } = useZones();
+  const [windX,        setWindX]        = useState(5.0);
+  const [windY,        setWindY]        = useState(0.0);
+  const [batteryPrediction, setBatteryPrediction] = useState(null);
+  const { predictBattery } = useAIPredictions();
 
   const handleMapClick = (latlng) => {
     if (!clickMode) return;
@@ -150,6 +155,26 @@ const MissionPlanner = () => {
 
     return () => { cancelled = true; };
   }, [source, destination]);
+
+  useEffect(() => {
+    if (!routeStats || !routeStats.distance) {
+      setBatteryPrediction(null);
+      return;
+    }
+    let cancelled = false;
+    const windMagnitude = Math.sqrt(windX * windX + windY * windY);
+    predictBattery({
+      distance: routeStats.distance / 1000,
+      windSpeed: windMagnitude,
+      payload: parseFloat(weight)
+    }).then(res => {
+      if (!cancelled) setBatteryPrediction(res);
+    }).catch(err => {
+      console.error("Battery prediction error:", err);
+      if (!cancelled) setBatteryPrediction(null);
+    });
+    return () => { cancelled = true; };
+  }, [routeStats, weight, windX, windY, predictBattery]);
 
   const handleDeploy = async () => {
     if (!source || !destination) return;
@@ -276,6 +301,20 @@ const MissionPlanner = () => {
           />
         </div>
 
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">Wind X (km/h)</label>
+          <input type="number" min="-35" max="35" step="1" value={windX} onChange={e => setWindX(e.target.value)}
+            className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm w-24 focus:outline-none focus:ring-2 focus:ring-navy-900"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">Wind Y (km/h)</label>
+          <input type="number" min="-35" max="35" step="1" value={windY} onChange={e => setWindY(e.target.value)}
+            className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm w-24 focus:outline-none focus:ring-2 focus:ring-navy-900"
+          />
+        </div>
+
         <div className="flex items-center gap-2 ml-auto px-3 py-2 rounded-xl border border-red-200 bg-red-50">
           <ShieldAlert size={14} className="text-red-500" />
           <span className="text-[9px] font-black text-red-600 uppercase tracking-widest">Red = No-Fly Zone (drone goes around)</span>
@@ -361,6 +400,15 @@ const MissionPlanner = () => {
             <div>📍 {routeStats.waypoints} waypoints</div>
             {routeStats.distance && <div>📏 {routeStats.distance.toFixed(0)} m</div>}
             <div className="text-teal-600 text-[10px]">✅ NFZ-safe route</div>
+            {batteryPrediction && (
+              <div className={`mt-2 pt-2 border-t border-navy-900/10 ${batteryPrediction.safeToFly ? 'text-emerald-600' : 'text-red-600'}`}>
+                <div className="text-[9px] uppercase tracking-widest font-black text-navy-500 mb-1">
+                  AI Prediction (Wind: {Math.sqrt(windX * windX + windY * windY).toFixed(1)}km/h)
+                </div>
+                <div>🔋 Est. Drain: {batteryPrediction.batteryUsed?.toFixed(1)}%</div>
+                <div>{!batteryPrediction.safeToFly && "⚠️ Unsafe to fly"}</div>
+              </div>
+            )}
           </div>
         )}
       </div>

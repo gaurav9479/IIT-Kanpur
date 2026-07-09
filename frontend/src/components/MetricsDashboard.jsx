@@ -4,14 +4,16 @@ import { TrendingUp, Package, Zap, Battery, Activity } from 'lucide-react';
 
 const CountUp = ({ value, suffix = "" }) => {
   const [displayValue, setDisplayValue] = useState(0);
+  const prevValue = React.useRef(0);
 
   useEffect(() => {
     const numericValue = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.]/g, '')) : value;
-    const controls = animate(0, numericValue, {
+    const controls = animate(prevValue.current, numericValue, {
       duration: 1,
       ease: "easeOut",
       onUpdate: (latest) => setDisplayValue(latest)
     });
+    prevValue.current = numericValue;
     return () => controls.stop();
   }, [value]);
 
@@ -62,9 +64,13 @@ const MetricsDashboard = ({ drones }) => {
   const groundedDrones = droneList.filter(d => d.status === "grounded").length;
   const lowBatteryDrones = droneList.filter(d => typeof d.batteryLevel === 'number' && d.batteryLevel < 20).length;
   
-  const avgBattery = totalDrones > 0
-    ? (droneList.reduce((sum, d) => sum + (d.batteryLevel || 100), 0) / totalDrones).toFixed(1)
-    : "0.0";
+  const activeDeliveries = droneList.filter(d => d.status === "delivering" || d.status === "returning" || d.status === "active");
+  
+  const avgBattery = activeDeliveries.length > 0
+    ? (activeDeliveries.reduce((sum, d) => sum + (d.batteryLevel || 100), 0) / activeDeliveries.length).toFixed(1)
+    : totalDrones > 0 
+      ? (droneList.reduce((sum, d) => sum + (d.batteryLevel || 100), 0) / totalDrones).toFixed(1)
+      : "0.0";
 
   // Simple loading state if no drones
   if (!drones || totalDrones === 0) {

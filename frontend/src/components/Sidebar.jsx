@@ -151,7 +151,12 @@ const Sidebar = () => {
       {/* ── Bottom ── */}
       <div className="mx-6 h-px bg-navy-900/5 mb-4" />
       <div className="px-3 pb-6">
-        <button className="
+        <button 
+          onClick={() => {
+            localStorage.clear();
+            window.location.href = '/';
+          }}
+          className="
           w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl
           text-red-500/70 hover:text-red-600 hover:bg-red-50
           transition-all duration-200 border border-transparent hover:border-red-200
