@@ -2,19 +2,15 @@ import mongoose from "mongoose";
 
 const geometrySchema = new mongoose.Schema(
   {
-    // 'Polygon' | 'Circle' | 'Rectangle'
     type: {
       type: String,
       enum: ["Polygon", "Circle", "Rectangle"],
       required: true,
     },
-    // GeoJSON coordinates array  [ [ [lng,lat], ... ] ]  for Polygon/Rectangle
-    // For Circle: [ [centerLng, centerLat] ] — radius stored separately
     coordinates: {
       type: mongoose.Schema.Types.Mixed,
       required: true,
     },
-    // Only used when type === 'Circle'
     radius: {
       type: Number,
       default: null,

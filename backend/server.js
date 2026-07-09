@@ -30,18 +30,15 @@ import zoneService from "./services/zone.service.js";
 const app = express();
 const httpServer = createServer(app);
 
-// ✅ FIXED SOCKET.IO CORS (ALLOW MOBILE)
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", // allow all (dev mode)
+    origin: "*", 
     methods: ["GET", "POST"],
   },
 });
 
-// ✅ MIDDLEWARES
 app.use(correlationIdMiddleware);
 
-// ✅ FIXED CORS FOR API
 app.use(
   cors({
     origin: "*", // allow mobile + localhost
@@ -53,7 +50,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(morgan("dev"));
 
-// ✅ RATE LIMIT
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10000,
