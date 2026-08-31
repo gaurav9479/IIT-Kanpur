@@ -67,12 +67,8 @@ const LiveFleetMap = ({
 
   return (
     <div className="flex relative h-[500px] w-full rounded-3xl overflow-hidden border border-navy-900/10 shadow-2xl glass-card group">
-      <div
-        className="relative h-full transition-all duration-300"
-        style={{
-          width: showLegend ? "calc(100% - 250px)" : "100%",
-        }}
-      >
+      {/* ── Main Map Area ── */}
+      <div className="relative h-full w-full">
         {/* Header */}
         <div className="absolute top-4 left-4 z-[1000] flex items-center gap-2.5">
           <div className="p-2 bg-navy-900 rounded-xl shadow-lg border border-white/10">
