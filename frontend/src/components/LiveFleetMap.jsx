@@ -66,7 +66,7 @@ const LiveFleetMap = ({
   );
 
   return (
-    <div className="flex relative h-[500px] w-full rounded-3xl overflow-hidden border border-navy-900/10 shadow-2xl glass-card group">
+    <div className="flex relative h-[620px] w-full rounded-3xl overflow-hidden border border-navy-900/10 shadow-2xl glass-card group">
       {/* ── Main Map Area ── */}
       <div className="relative h-full w-full">
         {/* Header */}
@@ -93,8 +93,8 @@ const LiveFleetMap = ({
           scrollWheelZoom={false}
         >
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            attribution="&copy; CARTO"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
 
           <CongestionOverlay gridData={gridData} />

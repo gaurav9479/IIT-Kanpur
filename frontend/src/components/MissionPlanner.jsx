@@ -200,19 +200,19 @@ const MissionPlanner = () => {
   const pathPositions = routePath ? routePath?.map(p => [p.lat, p.lng]) : [];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white border-l border-navy-900/5 overflow-y-auto custom-scrollbar">
+    <div className="flex-1 flex flex-col h-full bg-white border-l border-navy-900/5 overflow-hidden p-4 md:p-6 gap-3">
 
       {/* Header */}
-      <div className="p-8 pb-4 flex items-center justify-between">
+      <div className="flex items-center justify-between pb-1 flex-shrink-0">
         <div>
-          <h2 className="text-3xl font-sora font-black text-navy-900 tracking-tighter uppercase">
+          <h2 className="text-2xl md:text-3xl font-sora font-black text-navy-900 tracking-tighter uppercase">
             Drone Mission Planner
           </h2>
-          <p className="text-navy-600 text-[10px] font-black uppercase tracking-widest mt-1">
+          <p className="text-navy-600 text-[10px] font-black uppercase tracking-widest mt-0.5">
             Source → Destination • Drone detours around No-Fly Zones
           </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-3">
           <button onClick={() => { setClickMode(true); setSource(null); setDestination(null); setRoutePath(null); setRouteStats(null); setFeedback(null); }}
             className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors border ${
               clickMode ? 'bg-green-500 text-white border-green-600 animate-pulse' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
@@ -220,197 +220,325 @@ const MissionPlanner = () => {
             <MapPin size={14} className="inline mr-1" /> Pick on Map
           </button>
           <button onClick={() => { setClickMode(false); setSource(null); setDestination(null); setRoutePath(null); setRouteStats(null); setFeedback(null); }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white-soft hover:bg-navy-900 hover:text-white text-navy-900 font-black uppercase text-[10px] tracking-widest transition-all border border-navy-900/10 shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white-soft hover:bg-navy-900 hover:text-white text-navy-900 font-black uppercase text-[10px] tracking-widest transition-all border border-navy-900/10 shadow-sm"
           >
-            <Trash2 size={16} /> Clear
+            <Trash2 size={14} /> Clear
           </button>
           <button disabled={!canDeploy} onClick={handleDeploy}
-            className={`flex items-center gap-2 px-8 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl ${
+            className={`flex items-center gap-2 px-6 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl ${
               !canDeploy ? 'bg-white-muted text-navy-600 cursor-not-allowed opacity-50' : 'bg-navy-900 text-white hover:scale-105 active:scale-95'
             }`}
           >
-            <Send size={16} /> {isDeploying ? 'Deploying...' : 'Deploy Drone'}
+            <Send size={14} /> {isDeploying ? 'Deploying...' : 'Deploy Drone'}
           </button>
         </div>
       </div>
 
-      {/* Feedback */}
-      {feedback && (
-        <div className={`mx-8 mb-2 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ${
-          feedback.type === 'success' ? 'bg-green-50 border border-green-300 text-green-800' : 'bg-red-50 border border-red-300 text-red-800'
-        }`}>
-          {feedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-          {feedback.msg}
-        </div>
-      )}
+      {/* Feedback / Instructions / Route Stats Banner (compact, flex-shrink-0) */}
+      <div className="flex-shrink-0 space-y-1.5">
+        {feedback && (
+          <div className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+            feedback.type === 'success' ? 'bg-green-50 border border-green-300 text-green-800' : 'bg-red-50 border border-red-300 text-red-800'
+          }`}>
+            {feedback.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+            {feedback.msg}
+          </div>
+        )}
 
-      {/* Route Stats */}
-      {routeStats && !isPreviewing && (
-        <div className="mx-8 mb-2 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-4 bg-purple-50 border border-purple-300 text-purple-800">
-          <Route size={16} />
-          <span className="inline-block px-2 py-0.5 rounded-full text-white text-[10px] font-black uppercase bg-purple-600">
-            ⭐ A* Optimal Path
-          </span>
-          <span>{routeStats.waypoints} waypoints</span>
-          {routeStats.distance && <span>{routeStats.distance.toFixed(0)}m</span>}
-          <span className="text-[10px] text-purple-600">✅ A* algorithm — avoids all No-Fly Zones</span>
-        </div>
-      )}
-      {isPreviewing && (
-        <div className="mx-8 mb-2 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700">
-          <Loader2 size={16} className="animate-spin" /> Computing safe drone route...
-        </div>
-      )}
+        {clickMode && (
+          <div className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-green-50 border-2 border-green-400 text-green-800 animate-pulse">
+            <MapPin size={16} className="text-green-600" />
+            {!source
+              ? "👆 Click anywhere on the map to set SOURCE (takeoff point)"
+              : "👆 Now click on the map to set DESTINATION (drop point)"}
+          </div>
+        )}
 
-      {/* Controls — 5 Sources, 5 Destinations */}
-      <div className="px-8 pb-4 flex flex-wrap gap-4 items-end">
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">
-            <MapPin size={10} className="inline mr-1" /> Source (Takeoff)
-          </label>
-          <select value={source?.name || ""} onChange={e => {
-            const s = ALL_LOCATIONS.find(x => x.name === e.target.value);
-            setSource(s || null); setDestination(null);
-          }}
-            className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900"
-          >
-            <option value="">Select Source...</option>
-            {ALL_LOCATIONS?.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-          </select>
-        </div>
+        {routeStats && !isPreviewing && (
+          <div className="px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-3 bg-purple-50 border border-purple-300 text-purple-800">
+            <Route size={14} />
+            <span className="inline-block px-2 py-0.5 rounded-full text-white text-[9px] font-black uppercase bg-purple-600">
+              ⭐ A* Optimal Path
+            </span>
+            <span>{routeStats.waypoints} waypoints</span>
+            {routeStats.distance && <span>{routeStats.distance.toFixed(0)}m</span>}
+            <span className="text-[10px] text-purple-600 ml-auto">✅ A* algorithm — avoids all No-Fly Zones</span>
+          </div>
+        )}
 
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">
-            <MapPin size={10} className="inline mr-1" /> Destination (Drop)
-          </label>
-          <select value={destination?.name || ""} onChange={e => {
-            const d = ALL_LOCATIONS.find(x => x.name === e.target.value);
-            setDestination(d || null);
-          }} disabled={!source}
-            className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-navy-900 disabled:opacity-50"
-          >
-            <option value="">Select Destination...</option>
-            {ALL_LOCATIONS?.filter(d => d.name !== source?.name)?.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">Payload (kg)</label>
-          <input type="number" min="0.1" max="5" step="0.1" value={weight} onChange={e => setWeight(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm w-24 focus:outline-none focus:ring-2 focus:ring-navy-900"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">Wind X (km/h)</label>
-          <input type="number" min="-35" max="35" step="1" value={windX} onChange={e => setWindX(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm w-24 focus:outline-none focus:ring-2 focus:ring-navy-900"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest">Wind Y (km/h)</label>
-          <input type="number" min="-35" max="35" step="1" value={windY} onChange={e => setWindY(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-sm w-24 focus:outline-none focus:ring-2 focus:ring-navy-900"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto px-3 py-2 rounded-xl border border-red-200 bg-red-50">
-          <ShieldAlert size={14} className="text-red-500" />
-          <span className="text-[9px] font-black text-red-600 uppercase tracking-widest">Red = No-Fly Zone (drone goes around)</span>
-        </div>
+        {isPreviewing && (
+          <div className="px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700">
+            <Loader2 size={14} className="animate-spin" /> Computing safe drone route...
+          </div>
+        )}
       </div>
 
-      {/* Click-on-Map instruction banner */}
-      {clickMode && (
-        <div className="mx-8 mb-2 px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 bg-green-50 border-2 border-green-400 text-green-800 animate-pulse">
-          <MapPin size={18} className="text-green-600" />
-          {!source
-            ? "👆 Click anywhere on the map to set SOURCE (takeoff point)"
-            : "👆 Now click on the map to set DESTINATION (drop point)"}
-        </div>
-      )}
-      <div className="flex-1 mx-8 mb-8 rounded-3xl overflow-hidden glass-card relative border border-navy-900/10 shadow-2xl">
-        <SharedAirspaceMap className="h-full w-full z-0" showCongestion>
-          {/* Map click handler for picking source/dest */}
-          <MapClickHandler onClick={handleMapClick} />
+      {/* Main Content: Map + Right Panel (Fills remaining height without scroll) */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
+        {/* Center Map Area */}
+        <div className="flex-1 h-full min-h-0 rounded-3xl overflow-hidden glass-card relative border border-navy-900/10 shadow-2xl">
+          <SharedAirspaceMap className="h-full w-full z-0" showCongestion>
+            {/* Map click handler for picking source/dest */}
+            <MapClickHandler onClick={handleMapClick} />
 
-          {/* ═══ COMPUTED DRONE ROUTE ═══ */}
-          {pathPositions.length >= 2 && (
-            <>
-              <Polyline positions={pathPositions}
-                pathOptions={{
-                  color: '#7c3aed', weight: 5, opacity: 0.9,
-                  lineCap: 'round', lineJoin: 'round', dashArray: '10,5'
-                }}
-              />
-              {pathPositions.slice(1, -1).map((pos, i) => (
-                <CircleMarker key={`wp-${i}`} center={pos} radius={4}
-                  pathOptions={{ color: '#0d9488', fillColor: '#fff', fillOpacity: 1, weight: 2 }}
-                >
-                  <Tooltip direction="top" offset={[0, -5]}>
-                    <span className="text-[10px] font-bold">WP {i+1}</span>
+            {/* ═══ COMPUTED DRONE ROUTE (Teal Beaded Corridor with Turn Markers) ═══ */}
+            {pathPositions.length >= 2 && (
+              <>
+                {/* Underlying guide track */}
+                <Polyline
+                  positions={pathPositions}
+                  pathOptions={{
+                    color: '#0d9488',
+                    weight: 2.5,
+                    opacity: 0.85,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  }}
+                />
+
+                {/* Teal hollow waypoint beads */}
+                {pathPositions.map((pos, i) => (
+                  <CircleMarker
+                    key={`wp-${i}`}
+                    center={pos}
+                    radius={3.5}
+                    pathOptions={{
+                      color: '#0d9488',
+                      fillColor: '#ffffff',
+                      fillOpacity: 1,
+                      weight: 2,
+                    }}
+                  />
+                ))}
+
+                {/* Corner / Turn markers at significant direction changes */}
+                {routePath && routePath.length >= 5 && (() => {
+                  const turns = [];
+                  for (let i = 2; i < routePath.length - 2; i++) {
+                    const p1 = routePath[i - 2];
+                    const p2 = routePath[i];
+                    const p3 = routePath[i + 2];
+                    const b1 = Math.atan2(p2.lng - p1.lng, p2.lat - p1.lat);
+                    const b2 = Math.atan2(p3.lng - p2.lng, p3.lat - p2.lat);
+                    let diff = Math.abs((b2 - b1) * (180 / Math.PI));
+                    if (diff > 180) diff = 360 - diff;
+                    if (diff > 35) {
+                      if (turns.length === 0 || i - turns[turns.length - 1].idx > 8) {
+                        turns.push({ lat: p2.lat, lng: p2.lng, idx: i });
+                      }
+                    }
+                  }
+                  return turns.map((t, idx) => (
+                    <Marker
+                      key={`turn-${idx}`}
+                      position={[t.lat, t.lng]}
+                      icon={L.divIcon({
+                        className: '',
+                        html: `<div style="
+                          width: 14px;
+                          height: 14px;
+                          background: #ef4444;
+                          border: 2px solid #ffffff;
+                          border-radius: 3px;
+                          box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+                        "></div>`,
+                        iconAnchor: [7, 7]
+                      })}
+                    />
+                  ));
+                })()}
+              </>
+            )}
+
+            {/* Markers */}
+            {source && (
+              <>
+                <Marker position={[source.lat, source.lng]} icon={greenIcon}>
+                  <Tooltip permanent direction="top" offset={[0, -35]}>
+                    <span className="font-bold text-xs text-green-700">🛫 {source.name}</span>
                   </Tooltip>
-                </CircleMarker>
-              ))}
-            </>
-          )}
+                </Marker>
+                {/* Floating Coordinates Badge */}
+                <Marker
+                  position={[source.lat, source.lng]}
+                  icon={L.divIcon({
+                    className: '',
+                    html: `<div style="
+                      background: rgba(255, 255, 255, 0.96);
+                      backdrop-filter: blur(8px);
+                      border: 1px solid rgba(15, 23, 42, 0.12);
+                      border-radius: 8px;
+                      padding: 2px 8px;
+                      box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+                      white-space: nowrap;
+                      font-size: 11px;
+                      font-weight: 800;
+                      color: #065f46;
+                    ">
+                      <span style="font-size: 10px;">🛫</span>
+                      <span>${source.lat.toFixed(4)}, ${source.lng.toFixed(4)}</span>
+                    </div>`,
+                    iconAnchor: [55, 44]
+                  })}
+                />
+              </>
+            )}
+            {destination && (
+              <>
+                <Marker position={[destination.lat, destination.lng]} icon={redIcon}>
+                  <Tooltip permanent direction="top" offset={[0, -35]}>
+                    <span className="font-bold text-xs text-red-700">🛬 {destination.name}</span>
+                  </Tooltip>
+                </Marker>
+                {/* Floating Coordinates Badge */}
+                <Marker
+                  position={[destination.lat, destination.lng]}
+                  icon={L.divIcon({
+                    className: '',
+                    html: `<div style="
+                      background: rgba(255, 255, 255, 0.96);
+                      backdrop-filter: blur(8px);
+                      border: 1px solid rgba(15, 23, 42, 0.12);
+                      border-radius: 8px;
+                      padding: 2px 8px;
+                      box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+                      white-space: nowrap;
+                      font-size: 11px;
+                      font-weight: 800;
+                      color: #991b1b;
+                    ">
+                      <span style="font-size: 10px;">📍</span>
+                      <span>${destination.lat.toFixed(4)}, ${destination.lng.toFixed(4)}</span>
+                    </div>`,
+                    iconAnchor: [-10, 44]
+                  })}
+                />
+              </>
+            )}
+          </SharedAirspaceMap>
 
-          {/* Source marker (green) */}
-          {source && (
-            <Marker position={[source.lat, source.lng]} icon={greenIcon}>
-              <Tooltip permanent direction="top" offset={[0, -40]}>
-                <span className="text-[10px] font-black uppercase text-green-800">🛫 {source.name}</span>
-              </Tooltip>
-            </Marker>
-          )}
-
-          {/* Destination marker (red) */}
-          {destination && (
-            <Marker position={[destination.lat, destination.lng]} icon={redIcon}>
-              <Tooltip permanent direction="top" offset={[0, -40]}>
-                <span className="text-[10px] font-black uppercase text-red-800">🛬 {destination.name}</span>
-              </Tooltip>
-            </Marker>
-          )}
-        </SharedAirspaceMap>
-
-        {/* Coordinate readout */}
-        <div className="absolute bottom-4 left-4 z-10 space-y-2">
-          {([{ label: 'Source', item: source, icon: '🛫' }, { label: 'Destination', item: destination, icon: '🛬' }] || [])?.map(({ label, item, icon }) => (
-            <div key={label} className="glass-card px-4 py-2 flex items-center gap-3 bg-white border border-navy-900/20 shadow-xl">
-              <div className={`w-2.5 h-2.5 rounded-full ${item ? 'bg-navy-900' : 'bg-gray-300'}`} />
-              <div>
-                <p className="text-[8px] font-black text-navy-600 uppercase tracking-widest">{icon} {label}</p>
-                <p className="text-[10px] font-black text-navy-900">
-                  {item?.name || 'Not selected'}
-                  {item ? ` (${item.lat.toFixed(4)}, ${item.lng.toFixed(4)})` : ''}
-                </p>
+          {/* Source/Dest HUD overlay bottom-left */}
+          <div className="absolute bottom-4 left-4 z-[1000] flex flex-col gap-2 pointer-events-none">
+            {source && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur shadow-md border border-navy-900/10 text-xs font-bold text-navy-900">
+                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                <span>Source: {source.name}</span>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Route info */}
-        {routeStats && (
-          <div className="absolute bottom-4 right-4 z-10 px-4 py-3 rounded-2xl bg-white border border-navy-900/20 shadow-xl text-[11px] font-bold text-navy-800 space-y-1">
-            <div className="flex items-center gap-2 font-black text-navy-900 text-xs uppercase tracking-wide mb-1">
-              <Navigation size={12} /> Route Info
-            </div>
-            <div>📍 {routeStats.waypoints} waypoints</div>
-            {routeStats.distance && <div>📏 {routeStats.distance.toFixed(0)} m</div>}
-            <div className="text-teal-600 text-[10px]">✅ NFZ-safe route</div>
-            {batteryPrediction && (
-              <div className={`mt-2 pt-2 border-t border-navy-900/10 ${batteryPrediction.safeToFly ? 'text-emerald-600' : 'text-red-600'}`}>
-                <div className="text-[9px] uppercase tracking-widest font-black text-navy-500 mb-1">
-                  AI Prediction (Wind: {Math.sqrt(windX * windX + windY * windY).toFixed(1)}km/h)
-                </div>
-                <div>🔋 Est. Drain: {batteryPrediction.batteryUsed?.toFixed(1)}%</div>
-                <div>{!batteryPrediction.safeToFly && "⚠️ Unsafe to fly"}</div>
+            )}
+            {destination && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur shadow-md border border-navy-900/10 text-xs font-bold text-navy-900">
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                <span>Dest: {destination.name}</span>
               </div>
             )}
           </div>
-        )}
+        </div>
+
+        {/* Right Sidebar: All Controls, Inputs, and Route Details */}
+        <div className="w-full lg:w-[340px] flex flex-col gap-4">
+          <div className="p-5 rounded-3xl glass-card border border-navy-900/10 shadow-xl bg-white/80 backdrop-blur space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-widest text-navy-900 border-b border-navy-900/10 pb-2">
+              Mission Parameters
+            </h3>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-navy-600 uppercase tracking-widest flex items-center gap-1">
+                <MapPin size={12} className="text-green-600" /> Source (Takeoff)
+              </label>
+              <select value={source?.name || ""} onChange={e => {
+                const s = ALL_LOCATIONS.find(x => x.name === e.target.value);
+                setSource(s || null); setDestination(null);
+              }}
+                className="w-full px-3 py-2.5 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-navy-900 shadow-sm"
+              >
+                <option value="">Select Source...</option>
+                {ALL_LOCATIONS?.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-navy-600 uppercase tracking-widest flex items-center gap-1">
+                <MapPin size={12} className="text-red-600" /> Destination (Drop)
+              </label>
+              <select value={destination?.name || ""} onChange={e => {
+                const d = ALL_LOCATIONS.find(x => x.name === e.target.value);
+                setDestination(d || null);
+              }} disabled={!source}
+                className="w-full px-3 py-2.5 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-navy-900 disabled:opacity-50 shadow-sm"
+              >
+                <option value="">Select Destination...</option>
+                {ALL_LOCATIONS?.filter(d => d.name !== source?.name)?.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest truncate">Payload(kg)</label>
+                <input type="number" min="0.1" max="5" step="0.1" value={weight} onChange={e => setWeight(e.target.value)}
+                  className="w-full px-2 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-xs text-center focus:outline-none focus:ring-2 focus:ring-navy-900"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest truncate">Wind X</label>
+                <input type="number" min="-35" max="35" step="1" value={windX} onChange={e => setWindX(e.target.value)}
+                  className="w-full px-2 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-xs text-center focus:outline-none focus:ring-2 focus:ring-navy-900"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] font-black text-navy-600 uppercase tracking-widest truncate">Wind Y</label>
+                <input type="number" min="-35" max="35" step="1" value={windY} onChange={e => setWindY(e.target.value)}
+                  className="w-full px-2 py-2 rounded-xl border border-navy-900/10 bg-white text-navy-900 font-bold text-xs text-center focus:outline-none focus:ring-2 focus:ring-navy-900"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-2.5 rounded-xl border border-red-200 bg-red-50/80">
+              <ShieldAlert size={14} className="text-red-500 flex-shrink-0" />
+              <span className="text-[9px] font-black text-red-600 uppercase tracking-wider">
+                Red Zones: Protected NFZ (Auto-detour active)
+              </span>
+            </div>
+          </div>
+
+          {/* Route Info & Predictions Card */}
+          {routeStats && (
+            <div className="p-5 rounded-3xl glass-card border border-navy-900/10 shadow-xl bg-white/80 backdrop-blur space-y-3">
+              <div className="flex items-center justify-between border-b border-navy-900/10 pb-2">
+                <span className="text-xs font-black uppercase tracking-widest text-navy-900 flex items-center gap-1.5">
+                  <Route size={14} className="text-purple-600" /> Route Info
+                </span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                  A* Verified
+                </span>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-navy-900/5">
+                  <span className="text-navy-600 font-semibold">Total Waypoints:</span>
+                  <span className="font-bold text-navy-900">{routeStats.waypoints}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-navy-900/5">
+                  <span className="text-navy-600 font-semibold">Total Distance:</span>
+                  <span className="font-bold text-navy-900">{routeStats.distance?.toFixed(0)}m</span>
+                </div>
+                {batteryPrediction && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-navy-600 font-semibold">Est. Battery Drain:</span>
+                    <span className="font-bold text-emerald-600">~{batteryPrediction.drain}%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
